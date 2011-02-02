@@ -50,6 +50,8 @@ You can also include a gem for which you have a `.gem` package:
 
     package(:gemjar).with_gem(:file => _('snapshot-gem-2.0.7.pre.gem'))
 
+[buildr-package]: http://buildr.apache.org/packaging.html
+
 Caveats
 -------
 
