@@ -59,3 +59,12 @@ It's important that the name of your JAR not be the same as anything
 you will `require` from it.  E.g., in the sample above, if the JAR
 were named `sinatra.jar`, it would not be possible to `require
 "sinatra"` from it.
+
+About
+-----
+
+Copyright 2011, Rhett Sutphin.
+
+`buildr-gemjar` was built at [NUBIC][].
+
+[NUBIC]: http://www.nucats.northwestern.edu/centers/nubic
