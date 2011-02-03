@@ -4,7 +4,7 @@ require "buildr-gemjar/version"
 
 Gem::Specification.new do |s|
   s.name        = "buildr-gemjar"
-  s.version     = Buildr::Gemjar::VERSION
+  s.version     = BuildrGemjar::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Rhett Sutphin"]
   s.email       = ["rhett@detailedbalance.net"]

@@ -1,5 +1,3 @@
-module Buildr
-  module Gemjar
-    VERSION = "0.0.1"
-  end
+module BuildrGemjar
+  VERSION = "0.0.1"
 end
