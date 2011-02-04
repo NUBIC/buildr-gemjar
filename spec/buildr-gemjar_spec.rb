@@ -94,7 +94,6 @@ describe ":gemjar packaging" do
     def test_package
       r = repo_path
       define('foo', :version => '2.0') { |project|
-        repositories.remote << 'http://repo1.maven.org/maven2'
         yield package(:gemjar).clear_sources.add_source("file://#{r}")
       }
       pkg = projects.first.packages.first

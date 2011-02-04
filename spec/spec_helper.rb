@@ -1,10 +1,14 @@
 require 'rspec'
-require File.expand_path("../../vendor/buildr/spec/spec_helpers.rb", __FILE__)
 require 'zip/zip'
 require 'rubygems/user_interaction'
 
+require File.expand_path("../../vendor/buildr/spec/spec_helpers.rb", __FILE__)
+
 $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 require 'buildr-gemjar'
+
+# preload JRuby so it isn't D/Led with each spec
+artifacts(BuildrGemjar.jruby_artifact)
 
 require File.expand_path("../repo_builder.rb", __FILE__)
 
@@ -14,8 +18,6 @@ require File.expand_path("../repo_builder.rb", __FILE__)
   config.before(:all) do
     @original_gem_ui = Gem::DefaultUserInteraction.ui
     Gem::DefaultUserInteraction.ui = Gem::SilentUI.new
-
-    Buildr.repositories.remote << "http://repo1.maven.org/maven2"
   end
 
   config.after(:all) do
