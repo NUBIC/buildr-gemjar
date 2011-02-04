@@ -25,6 +25,8 @@ Using
 `:gemjar`.  Sample use:
 
     # buildfile
+    require 'buildr-gemjar'
+
     define 'sinatra-gems' do
       project.version = '1.1.2'
 
@@ -58,7 +60,8 @@ Caveats
 It's important that the name of your JAR not be the same as anything
 you will `require` from it.  E.g., in the sample above, if the JAR
 were named `sinatra.jar`, it would not be possible to `require
-"sinatra"` from it.
+"sinatra"` from it.  (This is a general JRuby requirement, not
+something that's specific to this tool.)
 
 About
 -----

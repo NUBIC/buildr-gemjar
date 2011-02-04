@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.authors     = ["Rhett Sutphin"]
   s.email       = ["rhett@detailedbalance.net"]
   s.homepage    = ""
-  s.summary     = %q{Provides a buildr package type for packaging gems for JRuby}
+  s.summary     = %q{Provides buildr support for packaging gems in a JAR for JRuby}
 
   s.rubyforge_project = "buildr-gemjar"
 
