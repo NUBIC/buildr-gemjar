@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   # Have to use buildr's version for its spec helper to work
   # s.add_development_dependency 'rspec', '~> 2.4'
   s.add_development_dependency 'braid', '~> 0.6'
+  s.add_development_dependency "ci_reporter", "~> 1.6"
 
   # Deps for the vendored buildr that's used in testing
   s.add_development_dependency 'rake',                 '0.8.7'
