@@ -8,7 +8,7 @@ require 'buildr-gemjar'
 
 require File.expand_path("../repo_builder.rb", __FILE__)
 
-RSpec.configure do |config|
+::RSpec.configure do |config|
   config.include BuildrGemjar::Spec::RepoBuilder
 
   config.before(:all) do
@@ -23,7 +23,7 @@ RSpec.configure do |config|
   end
 end
 
-RSpec::Matchers.define :be_a_jar_containing do |*contents|
+::RSpec::Matchers.define :be_a_jar_containing do |*contents|
   match do |filename|
     @missing = []
     Zip::ZipFile.open(filename) do |zip|
