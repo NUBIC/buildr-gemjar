@@ -15,11 +15,14 @@ module BuildrGemjar
     end
 
     def with_gem(*args)
-      if args.first.respond_to?(:has_key?)
-        gems << FileSourcedGem.new(args.first[:file])
-      else
-        gems << NamedGem.new(args[0], args[1])
-      end
+      new_gem =
+        if args.first.respond_to?(:has_key?)
+          FileSourcedGem.new(args.first[:file])
+        else
+          NamedGem.new(args[0], args[1])
+        end
+      gems << new_gem
+      enhance new_gem.dependencies
       self
     end
 
@@ -91,6 +94,10 @@ module BuildrGemjar
       def install_command_elements
         [filename]
       end
+
+      def dependencies
+        [(filename if File.exist?(filename))].compact
+      end
     end
 
     class NamedGem
@@ -107,6 +114,10 @@ module BuildrGemjar
         [name].tap do |elts|
           elts << "-v '#{version}'" if version
         end
+      end
+
+      def dependencies
+        []
       end
     end
   end

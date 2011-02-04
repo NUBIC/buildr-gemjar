@@ -91,14 +91,18 @@ describe ":gemjar packaging" do
       create_repo
     end
 
-    def test_package
+    after(:all) do
+      rm_repo
+    end
+
+    def test_package(invoke=true)
       r = repo_path
       define('foo', :version => '2.0') { |project|
         yield package(:gemjar).clear_sources.add_source("file://#{r}")
       }
-      pkg = projects.first.packages.first
-      pkg.invoke
-      pkg.to_s
+      @pkg = projects.first.packages.first
+      @pkg.invoke if invoke
+      @pkg.to_s
     end
 
     it "includes the explicitly requested gem" do
@@ -148,6 +152,27 @@ describe ":gemjar packaging" do
       lambda {
         test_package { |p| p.with_gem(:file => "z-4.5.gem") }
       }.should raise_error(/could not find gem z-4.5.gem/)
+    end
+
+    it "usually only builds the jar once" do
+      create_gem "f", "2.3", :path => tmp("other")
+      path = test_package(false) { |p| p.with_gem(:file => tmp("other", "f-2.3.gem")) }
+      touch path
+      stat = File.stat(path)
+      sleep 5
+      @pkg.invoke
+      stat.mtime.should == File.stat(path).mtime
+    end
+
+    it "rebuilds the jar if the source file changes" do
+      create_gem "f", "2.3", :path => tmp("other")
+      path = test_package(false) { |p| p.with_gem(:file => tmp("other", "f-2.3.gem")) }
+      touch path
+      stat = File.stat(path)
+      sleep 4
+      touch tmp("other", "f-2.3.gem")
+      @pkg.invoke
+      stat.mtime.should_not == File.stat(path).mtime
     end
   end
 end

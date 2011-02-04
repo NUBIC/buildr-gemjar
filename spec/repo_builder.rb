@@ -50,6 +50,10 @@ module BuildrGemjar
       def repo_path
         tmp("repo")
       end
+
+      def rm_repo
+        rm_r repo_path
+      end
     end
   end
 end
