@@ -63,6 +63,31 @@ were named `sinatra.jar`, it would not be possible to `require
 "sinatra"` from it.  (This is a general JRuby requirement, not
 something that's specific to this tool.)
 
+Compatibility
+-------------
+
+`buildr-gemjar` has been tested with buildr 1.4.4 on ruby 1.8.7,
+1.9.2, and JRuby* 1.5.6.  It's expected that it will work with any
+fairly recent version of buildr.  It's been tested on OS X and Linux;
+it may or may not work on Windows.
+
+(*The spec suite does not execute on JRuby for no reason I've yet
+been able to track down, but manual testing indicates that the
+extension works fine on that platform.)
+
+Future work
+-----------
+
+* Use [bundler][] to get a coherent list of dependencies across
+  several gems.  (It would already do this, except that bundler
+  doesn't support sourcing a gem from a `.gem` file, which is a more
+  important feature.)
+* Improve performance.  Currently a new JVM is spun up to do each gem
+  install, which can be slow if there are a lot of gems.
+* Support Windows.
+
+[bundler]: http://gembundler.com/
+
 About
 -----
 
