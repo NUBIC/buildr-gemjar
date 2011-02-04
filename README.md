@@ -14,7 +14,7 @@ Installing
 `buildr-gemjar` is distributed as a rubygem on
 [rubygems.org][as-gem].  Install it as you would any other gem:
 
-$ gem install buildr-gemjar
+    $ gem install buildr-gemjar
 
 [as-gem]: https://rubygems.org/gems/buildr-gemjar
 
