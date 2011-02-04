@@ -78,15 +78,30 @@ extension works fine on that platform.)
 Future work
 -----------
 
+* Remember requested gems so that rebuilds can automatically happen on
+  configuration changes.  (Workaround: build clean.)
 * Use [bundler][] to get a coherent list of dependencies across
   several gems.  (It would already do this, except that bundler
   doesn't support sourcing a gem from a `.gem` file, which is a more
   important feature.)
 * Improve performance.  Currently a new JVM is spun up to do each gem
-  install, which can be slow if there are a lot of gems.
+  install, which can be slow if there are a lot of gems.  However, the
+  install process needs to change the environment for rubygems so I'm
+  not sure this can be avoided.
 * Support Windows.
 
 [bundler]: http://gembundler.com/
+
+Contact
+-------
+
+For bugs and feature requests, please use the [github issue
+tracker][issues].  For other questions, please use the [buildr users
+mailing list][buildrusers] or e-mail [me][] directly.
+
+[issues]: https://github.com/rsutphin/buildr-gemjar/issues
+[buildrusers]: http://buildr.apache.org/mailing_lists.html
+[me]: mailto:rhett@detailedbalance.net
 
 About
 -----
