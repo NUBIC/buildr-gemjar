@@ -5,6 +5,11 @@ module BuildrGemjar
     def initialize(*args)
       super
       @target = File.expand_path("../gem_home", self.to_s)
+      # It doesn't seem like this should be necessary or useful --
+      # the directory is also created by a task dependency.
+      # However, if it isn't here, the file gem dependency is not
+      # correctly taken into account.  (Try commenting it out and
+      # running the specs.)
       mkdir_p @target
 
       clean
@@ -42,6 +47,10 @@ module BuildrGemjar
 
     def sources
       @sources ||= ['http://rubygems.org']
+    end
+
+    def gem_home
+      @target
     end
 
     private
@@ -150,7 +159,8 @@ module BuildrGemjar
     jruby = project.artifact(BuildrGemjar.jruby_artifact)
     project.packages.each do |pkg|
       if pkg.is_a?(GemjarTask)
-        pkg.enhance [jruby]
+        directory pkg.gem_home
+        pkg.enhance [pkg.gem_home, jruby]
         BuildrGemjar.jruby_complete_jar = jruby.to_s
       end
     end

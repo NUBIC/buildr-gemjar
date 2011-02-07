@@ -157,22 +157,37 @@ describe ":gemjar packaging" do
     it "usually only builds the jar once" do
       create_gem "f", "2.3", :path => tmp("other")
       path = test_package(false) { |p| p.with_gem(:file => tmp("other", "f-2.3.gem")) }
+
+      mkdir_p File.dirname(path)
       touch path
       stat = File.stat(path)
+
       sleep 5
       @pkg.invoke
-      stat.mtime.should == File.stat(path).mtime
+      File.stat(path).mtime.should == stat.mtime
     end
 
     it "rebuilds the jar if the source file changes" do
       create_gem "f", "2.3", :path => tmp("other")
       path = test_package(false) { |p| p.with_gem(:file => tmp("other", "f-2.3.gem")) }
+
+      mkdir_p File.dirname(path)
       touch path
       stat = File.stat(path)
+
       sleep 4
       touch tmp("other", "f-2.3.gem")
       @pkg.invoke
-      stat.mtime.should_not == File.stat(path).mtime
+      File.stat(path).mtime.should_not == stat.mtime
+    end
+
+    it "successfully repackages after a clean" do
+      path = test_package(false) { |p| p.with_gem('a') }
+
+      project('foo').clean.invoke
+      @pkg.invoke
+
+      File.exist?(path).should be_true
     end
   end
 end
