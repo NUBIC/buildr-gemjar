@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Rhett Sutphin"]
   s.email       = ["rhett@detailedbalance.net"]
-  s.homepage    = ""
+  s.homepage    = "http://github.com/rsutphin/buildr-gemjar"
   s.summary     = %q{Provides buildr support for packaging gems in a JAR for JRuby}
 
   s.rubyforge_project = "buildr-gemjar"
