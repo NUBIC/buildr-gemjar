@@ -59,6 +59,7 @@ module BuildrGemjar
       fail "No gems specified.  Did you call #with_gem?" if gems.empty?
       gems.each do |gem|
         cmd = [
+          "GEM_PATH=''",
           "GEM_HOME='#{@target}'",
           "java",
           "-jar",

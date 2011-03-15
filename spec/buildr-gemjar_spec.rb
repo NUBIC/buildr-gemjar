@@ -189,6 +189,19 @@ describe ":gemjar packaging" do
 
       File.exist?(path).should be_true
     end
+
+    describe "with gems in GEM_PATH" do
+      before do
+        gem_path_entry = tmp('gem_path')
+        system("GEM_HOME='#{gem_path_entry}' gem install --source 'file://#{repo_path}' --no-rdoc --no-ri -q a > '#{tmp('install_out')}'")
+        ENV['GEM_PATH'] = gem_path_entry
+      end
+
+      it "installs all dependencies, including ones in the GEM_PATH" do
+        test_package { |p| p.with_gem("c") }.
+          should be_a_jar_containing("specifications/a-1.0.gemspec")
+      end
+    end
   end
 end
 
