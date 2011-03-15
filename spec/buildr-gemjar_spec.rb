@@ -194,7 +194,7 @@ describe ":gemjar packaging" do
       before do
         gem_path_entry = tmp('gem_path')
         system("GEM_HOME='#{gem_path_entry}' gem install --source 'file://#{repo_path}' --no-rdoc --no-ri -q a > '#{tmp('install_out')}'")
-        ENV['GEM_PATH'] = gem_path_entry
+        ENV['GEM_PATH'] = gem_path_entry.to_s
       end
 
       it "installs all dependencies, including ones in the GEM_PATH" do
