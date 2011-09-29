@@ -99,7 +99,7 @@ For bugs and feature requests, please use the [github issue
 tracker][issues].  For other questions, please use the [buildr users
 mailing list][buildrusers] or e-mail [me][] directly.
 
-[issues]: https://github.com/rsutphin/buildr-gemjar/issues
+[issues]: https://github.com/NUBIC/buildr-gemjar/issues
 [buildrusers]: http://buildr.apache.org/mailing_lists.html
 [me]: mailto:rhett@detailedbalance.net
 
