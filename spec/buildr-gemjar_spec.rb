@@ -190,6 +190,22 @@ describe ":gemjar packaging" do
       File.exist?(path).should be_true
     end
 
+    def manifest_text_from(jarfile)
+      require 'zip/zipfilesystem'
+      
+      Zip::ZipFile.open(jarfile) do |zfs|
+        zfs.file.read('META-INF/MANIFEST.MF')
+      end
+    end
+
+    it 'includes directly specified manifest properties' do
+      actual = test_package { |p| 
+        p.with_gem('a').with :manifest => { 'Bundle-SymbolicName' => 'foo-bar' } 
+      }
+      
+      manifest_text_from(actual).should include("Bundle-SymbolicName: foo-bar")
+    end
+
     describe "with gems in GEM_PATH" do
       before do
         gem_path_entry = tmp('gem_path')
