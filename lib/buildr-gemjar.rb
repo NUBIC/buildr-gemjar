@@ -1,21 +1,25 @@
 require 'buildr/java/packaging'
+require 'pathname'
 
 module BuildrGemjar
   class GemjarTask < Buildr::Packaging::Java::JarTask
+    DEFAULT_UNPACK_GLOBS = ['lib/**/*.jar']
+
     def initialize(*args)
       super
-      @target = File.expand_path("../gem_home", self.to_s)
+      @target = Pathname.new File.expand_path("../gem_home", self.to_s)
       # It doesn't seem like this should be necessary or useful --
       # the directory is also created by a task dependency.
       # However, if it isn't here, the file gem dependency is not
       # correctly taken into account.  (Try commenting it out and
       # running the specs.)
-      mkdir_p @target
+      @target.mkpath
 
       clean
-      include(@target, :as => '.')
+      include(@target.to_s, :as => '.')
       enhance do
         install_gems
+        unpack_jars
       end
     end
 
@@ -104,7 +108,7 @@ module BuildrGemjar
 
       case unpack_jars_option
       when true
-        ['lib/**/*.jar']
+        DEFAULT_UNPACK_GLOBS
       when false
         []
       else
@@ -112,8 +116,57 @@ module BuildrGemjar
       end
     end
 
+    def unpack_jars
+      all_gem_roots = (gem_home + 'gems').children
+      requested_gem_roots = gems.collect { |gem| gem.install_root(gem_home) }.compact
+      other_gem_roots = all_gem_roots - requested_gem_roots
+
+      FileUtils.cd gem_home do
+        other_gem_roots.each do |root|
+          unpack_gem_jars(root, DEFAULT_UNPACK_GLOBS)
+        end
+        gems.each do |gem|
+          unpack_gem_jars(gem.install_root(gem_home), gem.unpack_globs)
+        end
+      end
+    end
+
+    def unpack_gem_jars(installed_root, jar_globs)
+      jar_globs.each do |glob|
+        Dir[installed_root + glob].each do |jar|
+          trace "Unpacking #{jar}"
+          cmd = [
+            'jar',
+            'xf',
+            jar
+          ].join(' ')
+          trace cmd
+          out = %x[#{cmd} 2>&1]
+          if $? != 0
+            fail "jar extraction failed:\n#{out}"
+          else
+            trace out
+          end
+          FileUtils.rm_rf 'META-INF'
+        end
+      end
+    end
+
+    module GemProperties
+      attr_accessor :unpack_globs
+
+      ##
+      # If the gem is installed in the given gem home, this method
+      # gives the path to its expanded root under `{gem_home}/gems`.
+      def install_root(gem_home)
+        (gem_home + 'gems').children.detect { |p| p.to_s =~ /#{name}-#{version}/ }
+      end
+    end
+
     class FileSourcedGem
-      attr_accessor :filename, :unpack_globs
+      include GemProperties
+
+      attr_accessor :filename
 
       def initialize(filename)
         @filename = filename
@@ -128,10 +181,27 @@ module BuildrGemjar
       def dependencies
         [(filename if File.exist?(filename))].compact
       end
+
+      def name
+        spec.name
+      end
+
+      def version
+        spec.version
+      end
+
+      def spec
+        require 'rubygems/specification'
+
+        @spec ||= YAML.load(`tar xOf '#{filename}' metadata.gz | gunzip`)
+      end
+      private :spec
     end
 
     class NamedGem
-      attr_accessor :name, :version, :unpack_globs
+      include GemProperties
+
+      attr_accessor :name, :version
 
       def initialize(name, version)
         @name = name
@@ -180,8 +250,8 @@ module BuildrGemjar
     jruby = project.artifact(BuildrGemjar.jruby_artifact)
     project.packages.each do |pkg|
       if pkg.is_a?(GemjarTask)
-        directory pkg.gem_home
-        pkg.enhance [pkg.gem_home, jruby]
+        directory pkg.gem_home.to_s
+        pkg.enhance [pkg.gem_home.to_s, jruby]
         BuildrGemjar.jruby_complete_jar = jruby.to_s
       end
     end

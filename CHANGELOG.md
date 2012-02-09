@@ -1,3 +1,12 @@
+1.1.0
+=====
+
+- Added: JARs which are embedded in gems which are being packaged by
+  buildr-gemjar can be unpacked into the result JAR. The default
+  behavior is to unpack any JARs found under `lib` in the gem, but
+  this can be changed with an option on `with_gem`. See the README for
+  more details. (#4)
+
 1.0.2
 =====
 

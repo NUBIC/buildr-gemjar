@@ -270,6 +270,73 @@ describe ":gemjar packaging" do
           should be_a_jar_containing("specifications/a-1.0.gemspec")
       end
     end
+
+    describe 'with jars to unpack' do
+      shared_examples_for 'a gem including jars' do
+        let(:pkg) { test_package { |p| p.with_gem(*args).with :manifest => { 'Foo' => 'Bar' } } }
+
+        it 'unpacks jars under lib by default' do
+          pkg.should be_a_jar_containing('org/example/jr/lib.properties')
+        end
+
+        it 'does not unpack other jars by default' do
+          pkg.should_not be_a_jar_containing('org/example/jr/ext.properties')
+        end
+
+        describe 'with a glob' do
+          before do
+            args.last[:unpack_jars] = 'ext/**/*.jar'
+          end
+
+          it 'unpacks the requested jars' do
+            pkg.should be_a_jar_containing('org/example/jr/ext.properties')
+          end
+
+          it 'does not unpack other jars' do
+            pkg.should_not be_a_jar_containing('org/example/jr/lib.properties')
+          end
+        end
+
+        it 'unpacks everything for each glob' do
+          args.last[:unpack_jars] = ['ext/**/*.jar', 'lib/*.jar']
+          pkg.should be_a_jar_containing(
+            'org/example/jr/ext.properties', 'org/example/jr/lib.properties')
+        end
+
+        it 'unpacks nothing when :unpack_jars is false' do
+          args.last[:unpack_jars] = false
+          pkg.should_not be_a_jar_containing('org')
+        end
+
+        it 'does not include the manifest from unpacked jars' do
+          manifest_text_from(pkg).should_not include('Main-Class')
+        end
+      end
+
+      describe 'a named gem' do
+        let(:args) { ['jr', '1.0', {}] }
+
+        it_behaves_like 'a gem including jars'
+      end
+
+      describe 'a file-sourced gem' do
+        let(:args) { [{ :file => (repo_path + 'gems' + 'jr-1.0-java.gem').to_s}] }
+
+        it_behaves_like 'a gem including jars'
+      end
+
+      describe 'with jars in dependencies' do
+        let(:pkg) { test_package { |p| p.with_gem('jr-user') } }
+
+        it 'unpacks jars under lib' do
+          pkg.should be_a_jar_containing('org/example/jr/lib.properties')
+        end
+
+        it 'does not unpack other jars' do
+          pkg.should_not be_a_jar_containing('org/example/jr/ext.properties')
+        end
+      end
+    end
   end
 end
 
