@@ -54,6 +54,30 @@ You can also include a gem for which you have a `.gem` package:
 
 [buildr-package]: http://buildr.apache.org/packaging.html
 
+### JARs embedded in gems
+
+Many gems that are intended for use in JRuby embed one or more JARs
+containing "native" java code. [jruby-openssl][] is a popular example
+of this practice. If these jars are embedded as-is into the gemjar,
+they won't be visible to ruby code.
+
+To resolve this, `buildr-gemjar` will unpack any jar found under the
+lib directory of any installed gem (including dependent gems) and
+include its contents in the gemjar directly. You can control this
+behavior for an individual gem with the `:unpack_jars` option to
+`with_gems`. It can be set to one of the following values:
+
+* an array of globs; e.g., `["lib/shared/**/*.jar"]`. Each glob will be
+  applied at the root of the installed gem's contents and each match
+  will be unpacked into the gemjar.
+* `true`. Equivalent to `["lib/**/*.jar"]`.
+* `false`. Do not unpack any jars from this gem.
+
+The default is `:unpack_jars => true`. Note that you can only apply
+different unpack behavior for gems which are explicitly included via
+`with_gem`. Any transitively installed gems will have the default
+unpack behavior applied.
+
 Caveats
 -------
 
@@ -62,6 +86,9 @@ you will `require` from it.  E.g., in the sample above, if the JAR
 were named `sinatra.jar`, it would not be possible to `require
 "sinatra"` from it.  (This is a general JRuby requirement, not
 something that's specific to this tool.)
+
+Embedded JARs will not have any of their metadata (manifests, META-INF
+service registrations, etc.) preserved if they are unpacked.
 
 Compatibility
 -------------
