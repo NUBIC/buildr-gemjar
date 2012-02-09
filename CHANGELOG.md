@@ -7,6 +7,9 @@
   this can be changed with an option on `with_gem`. See the README for
   more details. (#4)
 
+- Fixed: When invoking `gem install` check the exit status (in
+  addition to scanning the output) to detect failures. (#2)
+
 1.0.2
 =====
 
