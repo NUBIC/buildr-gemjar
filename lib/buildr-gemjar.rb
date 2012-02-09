@@ -20,12 +20,17 @@ module BuildrGemjar
     end
 
     def with_gem(*args)
+      options = args.last.respond_to?(:has_key?) ? args.pop : {}
+
       new_gem =
-        if args.first.respond_to?(:has_key?)
-          FileSourcedGem.new(args.first[:file])
+        if options.has_key?(:file)
+          FileSourcedGem.new(options[:file])
         else
           NamedGem.new(args[0], args[1])
         end
+
+      new_gem.unpack_globs = determine_unpack_globs(options[:unpack_jars])
+
       gems << new_gem
       enhance new_gem.dependencies
       self
@@ -94,8 +99,21 @@ module BuildrGemjar
       end
     end
 
+    def determine_unpack_globs(unpack_jars_option)
+      unpack_jars_option = true if unpack_jars_option.nil?
+
+      case unpack_jars_option
+      when true
+        ['lib/**/*.jar']
+      when false
+        []
+      else
+        [*unpack_jars_option]
+      end
+    end
+
     class FileSourcedGem
-      attr_accessor :filename
+      attr_accessor :filename, :unpack_globs
 
       def initialize(filename)
         @filename = filename
@@ -113,7 +131,7 @@ module BuildrGemjar
     end
 
     class NamedGem
-      attr_accessor :name, :version
+      attr_accessor :name, :version, :unpack_globs
 
       def initialize(name, version)
         @name = name

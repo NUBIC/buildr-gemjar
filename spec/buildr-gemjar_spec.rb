@@ -45,6 +45,58 @@ describe ":gemjar packaging" do
 
       actual_gems.collect { |g| g.kind }.should == [:named, :file, :named]
     end
+
+    describe ':unpack_jars' do
+      shared_examples_for 'a gem with unpack behavior' do
+        let(:gem) {
+          a = args
+          define('foo', :version => '1.0') {
+            package(:gemjar).with_gem(*a)
+          }
+          actual_gems.first
+        }
+
+        it 'defaults to true' do
+          gem.unpack_globs.should == ['lib/**/*.jar']
+        end
+
+        it 'interprets true as "lib/**/*.jar"' do
+          args.last[:unpack_jars] = true
+          gem.unpack_globs.should == ['lib/**/*.jar']
+        end
+
+        it 'interprets false as no globs' do
+          args.last[:unpack_jars] = false
+          gem.unpack_globs.should == []
+        end
+
+        it 'passes through an array' do
+          expected = %w(lib/shared/*.jar ext/**/*.jar)
+          args.last[:unpack_jars] = expected
+
+          gem.unpack_globs.should == expected
+        end
+
+        it 'wraps a single value into an array' do
+          expected = 'ext/**/*.jar'
+          args.last[:unpack_jars] = expected
+
+          gem.unpack_globs.should == [expected]
+        end
+      end
+
+      describe 'with a named gem' do
+        let(:args) { ['jruby-openssl', '0.7.5', {}] }
+
+        it_behaves_like 'a gem with unpack behavior'
+      end
+
+      describe 'with a file-sourced gem' do
+        let(:args) { [{ :file => 'snapshot.gem' }] }
+
+        it_behaves_like 'a gem with unpack behavior'
+      end
+    end
   end
 
   describe "sources" do
