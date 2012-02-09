@@ -86,7 +86,9 @@ module BuildrGemjar
         trace cmd
         out = %x[#{cmd} 2>&1]
         trace out
-        if out =~ /ERROR/
+        if $? != 0
+          fail "gem invocation failed:\n#{out}"
+        elsif out =~ /ERROR/
           fail out.split("\n").grep(/ERROR/).join("\n")
         end
       end
