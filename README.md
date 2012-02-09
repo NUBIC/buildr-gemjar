@@ -70,13 +70,15 @@ behavior for an individual gem with the `:unpack_jars` option to
 * an array of globs; e.g., `["lib/shared/**/*.jar"]`. Each glob will be
   applied at the root of the installed gem's contents and each match
   will be unpacked into the gemjar.
-* `true`. Equivalent to `["lib/**/*.jar"]`.
+* `true`. Equivalent to `["lib/**/*.jar"]`. This is the default.
 * `false`. Do not unpack any jars from this gem.
 
 The default is `:unpack_jars => true`. Note that you can only apply
 different unpack behavior for gems which are explicitly included via
 `with_gem`. Any transitively installed gems will have the default
-unpack behavior applied.
+unpack behavior (i.e., unpack every JAR under lib) applied.
+
+[jruby-openssl]: https://rubygems.org/gems/jruby-openssl
 
 Caveats
 -------
