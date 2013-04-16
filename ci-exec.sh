@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 
-BUNDLER_VERSION=1.2.0
+BUNDLER_VERSION=1.3.5
 GEMSET=buildr-gemjar
 
 if [ -z $CI_RUBY ]; then
