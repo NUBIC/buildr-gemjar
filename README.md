@@ -95,14 +95,14 @@ service registrations, etc.) preserved if they are unpacked.
 Compatibility
 -------------
 
-`buildr-gemjar` has been tested with buildr 1.4.4 on ruby 1.8.7,
-1.9.2, and JRuby* 1.5.6.  It's expected that it will work with any
-fairly recent version of buildr.  It's been tested on OS X and Linux;
-it may or may not work on Windows.
+`buildr-gemjar` is tested with buildr 1.4.11 on Ruby 1.9.3 and JRuby 1.7.2. It's
+expected that it will work with any fairly recent version of buildr.
 
-(*The spec suite does not execute on JRuby for no reason I've yet
-been able to track down, but manual testing indicates that the
-extension works fine on that platform.)
+It requires RubyGems 1.5.0 or later. This means that it won't work with JRuby
+before 1.6.1. Several of the early revisions of JRuby in the 1.6 line had a
+severe issue installing certain gems; to be safe, use 1.6.5 or later.
+
+It's been tested on OS X and Linux; it may or may not work on Windows.
 
 Future work
 -----------
