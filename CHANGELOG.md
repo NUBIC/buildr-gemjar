@@ -1,5 +1,8 @@
-1.1.1
+1.2.0
 =====
+
+- Add support for newer JRuby, buildr and rubygems. Drop support for RubyGems
+  before 1.5.0 and JRuby before 1.6.5.
 
 1.1.0
 =====

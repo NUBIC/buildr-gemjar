@@ -165,7 +165,7 @@ describe ":gemjar packaging" do
     it "fails if the gem isn't available" do
       lambda {
         test_package { |p| p.with_gem("y") }
-      }.should raise_error(/could not find gem y/)
+      }.should raise_error(/could not find.*gem.*y/i)
     end
 
     it "includes the specific version requested" do
@@ -176,7 +176,7 @@ describe ":gemjar packaging" do
     it "fails if the version requested isn't available" do
       lambda {
         test_package { |p| p.with_gem("b", "> 2") }
-      }.should raise_error(/could not find gem b/)
+      }.should raise_error(/could not find.*gem.*b.*\> 2/i)
     end
 
     it "includes dependencies of the requested gem" do
@@ -203,7 +203,7 @@ describe ":gemjar packaging" do
     it "fails usefully when a specified file isn't available" do
       lambda {
         test_package { |p| p.with_gem(:file => "z-4.5.gem") }
-      }.should raise_error(/could not find gem z-4.5.gem/)
+      }.should raise_error(/could not find.*gem.*z-4.5.gem/i)
     end
 
     it "usually only builds the jar once" do

@@ -76,16 +76,7 @@ module BuildrGemjar
           "-S",
           "gem",
           "install",
-          # The behavior of --source changed between rubygems 1.3.6
-          # and 1.5.0.  Previously, specifying source(s) overrode the
-          # default source(s).  After, specifying source(s) adds onto
-          # the default list.  To get the old behavior, you have to
-          # include "--clear-sources".  This code wants the old
-          # behavior, but no version of jruby-complete contains a
-          # version of rubygems > 1.3.6, so it's not an issue today.
-          # Later we'll probably have to do version sniffing or
-          # something.
-          # "--clear-sources",
+          "--clear-sources",
           sources.collect { |s| ["--source", "'#{s}'"] },
           "--no-ri",
           "--no-rdoc",
@@ -235,7 +226,7 @@ module BuildrGemjar
   def self.jruby_version
     version = Buildr.settings.build['jruby'] ||
       (JRUBY_VERSION if Kernel.const_defined?(:JRUBY_VERSION)) ||
-      "1.5.6"
+      "1.7.0"
   end
 
   def self.jruby_artifact

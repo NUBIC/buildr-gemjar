@@ -44,6 +44,7 @@ module BuildrGemjar
             s.name    = name
             s.version = version
             s.summary = "A fake #{name}"
+            s.authors = ['A. Tester']
           end
           yield spec if block_given?
 
