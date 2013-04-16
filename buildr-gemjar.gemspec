@@ -33,7 +33,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'json_pure',            '1.7.5'
   s.add_development_dependency 'rubyforge',            '2.0.4'
   s.add_development_dependency 'hoe',                  '3.1.0'
-  s.add_development_dependency 'rjb',                  '1.4.2' if (s.platform.to_s == 'x86-mswin32' || s.platform.to_s == 'ruby')
+  s.add_development_dependency 'rjb',                  '1.4.2' unless RUBY_PLATFORM =~ /java/
   s.add_development_dependency 'atoulme-Antwrap',      '~> 0.7.4'
   s.add_development_dependency 'diff-lcs',             '1.1.3'
   s.add_development_dependency 'rspec-expectations',   '2.11.3'
@@ -42,6 +42,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rspec',                '2.11.0'
   s.add_development_dependency 'xml-simple',           '1.1.1'
   s.add_development_dependency 'minitar',              '0.5.3'
-  s.add_development_dependency 'jruby-openssl',        '~> 0.8.2' if s.platform.to_s == 'java'
+  s.add_development_dependency 'jruby-openssl',        '~> 0.8.2' if RUBY_PLATFORM =~ /java/
   s.add_development_dependency 'bundler'
 end
