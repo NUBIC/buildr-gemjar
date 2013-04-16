@@ -13,8 +13,9 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'spec_helpers'))
+
+if Java.java.lang.System.getProperty("java.runtime.version") >= "1.6"
 
 # TODO's
 #  -test passing System props
@@ -22,15 +23,23 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', 'spec_helpers')
 #  -test exclude group
 #  -test include Suite's
 #  -test exclude Suite's
+#
+describe "scalatest version" do
 
+  case
+  when Buildr::Scala.version?(2.8)
+    it 'should be 1.3 for scala 2.8' do
+      Scala::ScalaTest.dependencies.should include("org.scalatest:scalatest:jar:1.3")
+    end
+  when Buildr::Scala.version?(2.9)
+    it 'should be 1.8 for scala 2.9' do
+      Scala::ScalaTest.dependencies.should include("org.scalatest:scalatest_2.9.2:jar:1.8")
+    end
+  end
+end
 
 describe Buildr::Scala::ScalaTest do
-  
-  before(:each) do
-    # Force Scala 2.8.1 for specs; don't want to rely on SCALA_HOME
-    Buildr.settings.build['scala.version'] = "2.8.1"
-  end
-    
+
   it 'should be the default test framework when test cases are in Scala' do
     write 'src/test/scala/com/example/MySuite.scala', <<-SCALA
       package com.example
@@ -281,3 +290,6 @@ describe Buildr::Scala::ScalaTest do
 
 end
 
+elsif Buildr::VERSION >= '1.5'
+  raise "JVM version guard in #{__FILE__} should be removed since it is assumed that Java 1.5 is no longer supported."
+end

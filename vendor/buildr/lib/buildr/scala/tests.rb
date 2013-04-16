@@ -13,17 +13,35 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+module Buildr::Scala#:nodoc:
 
-require 'buildr/core/build'
-require 'buildr/core/compile'
-require 'buildr/java/ant'
-require 'buildr/java/tests'
+  # Mockito is available when running ScalaTest
+  module Mockito
+    VERSION = '1.8.5'
 
+    class << self
+      def version
+        Buildr.settings.build['scalatest-mockito'] || Buildr.settings.build['mockito'] || VERSION
+      end
 
-module Buildr::Scala
+      def dependencies
+        @dependencies ||= ["org.mockito:mockito-all:jar:#{version}"]
+      end
+    end
+  end
+
   # Scala::Check is available when using Scala::Test or Scala::Specs
   module Check
-    VERSION = '1.8'
+    VERSION = case
+      when Buildr::Scala.version?("2.7")
+        '1.6'
+      when Buildr::Scala.version?("2.8.0")
+        '1.7'
+      when Buildr::Scala.version?("2.8.1")
+        '1.8'
+      else
+        '1.10.0'
+    end
 
     class << self
       def version
@@ -31,15 +49,26 @@ module Buildr::Scala
       end
 
       def classifier
-        Buildr.settings.build['scala.check.classifier'] || ""
+        Buildr.settings.build['scala.check.classifier']
       end
 
       def artifact
-        Buildr.settings.build['scala.check.artifact'] || "scalacheck_#{Buildr::Scala.version}"
+        Buildr.settings.build['scala.check.artifact'] || "scalacheck_#{Buildr::Scala.version_without_build}"
       end
 
       def dependencies
-        (version =~ /:/) ? [version] : ["org.scala-tools.testing:#{artifact}:jar:#{classifier}:#{version}"]
+        return [version] if (version =~ /:/)
+        group = case
+          when version =~ /^1.[67]/
+            "org.scala-tools.testing"
+          else
+            "org.scalacheck"
+        end
+        if classifier
+          ["#{group}:#{artifact}:jar:#{classifier}:#{version}"]
+        else
+          ["#{group}:#{artifact}:jar:#{version}"]
+        end
       end
 
     private
@@ -60,16 +89,31 @@ module Buildr::Scala
   # * :java_args   -- Arguments passed as is to the JVM.
   class ScalaTest < Buildr::TestFramework::Java
 
-    VERSION = '1.2'
+    VERSION = case
+      when Buildr::Scala.version?(2.7)
+        '1.3'
+      else
+        '1.8'
+    end
 
     class << self
       def version
-        Buildr.settings.build['scala.test'] || VERSION
+        custom = Buildr.settings.build['scala.test']
+        (custom =~ /:/) ? Buildr.artifact(custom).version : VERSION
+      end
+
+      def specs
+        custom = Buildr.settings.build['scala.test']
+        return custom if (custom =~ /:/)
+        if Buildr::Scala.version?(2.7, 2.8)
+          "org.scalatest:scalatest:jar:#{version}"
+        else
+          "org.scalatest:scalatest_#{Buildr::Scala.version_without_build}:jar:#{version}"
+        end
       end
 
       def dependencies
-        ["org.scalatest:scalatest:jar:#{version}"] + Check.dependencies +
-          JMock.dependencies + JUnit.dependencies
+        [specs] + Check.dependencies + JMock.dependencies + JUnit.dependencies + Mockito.dependencies
       end
 
       def applies_to?(project) #:nodoc:
@@ -104,7 +148,12 @@ module Buildr::Scala
       mkpath task.report_to.to_s
       success = []
 
-      reporter_options = 'TFGBSAR' # testSucceeded, testFailed, testIgnored, suiteAborted, runStopped, runAborted, runCompleted
+      reporter_options = if (ScalaTest.version =~ /^0\./)
+        'TFGBSAR' # testSucceeded, testFailed, testIgnored, suiteAborted, runStopped, runAborted, runCompleted
+      else
+        ''
+      end
+
       scalatest.each do |suite|
         info "ScalaTest #{suite.inspect}"
         # Use Ant to execute the ScalaTest task, gives us performance and reporting.
@@ -113,9 +162,9 @@ module Buildr::Scala
         taskdef = Buildr.artifacts(self.class.dependencies).each(&:invoke).map(&:to_s)
         Buildr.ant('scalatest') do |ant|
           # ScalaTestTask was deprecated in 1.2, in favor of ScalaTestAntTask
-          classname = (ScalaTest.version =~ /1\.[01]/) ? \
+          classname = (ScalaTest.version =~ /^1\.[01]/) ? \
             'org.scalatest.tools.ScalaTestTask' : 'org.scalatest.tools.ScalaTestAntTask'
-          ant.taskdef :name=>'scalatest', :classname=>'org.scalatest.tools.ScalaTestTask',
+          ant.taskdef :name=>'scalatest', :classname=>classname,
             :classpath=>taskdef.join(File::PATH_SEPARATOR)
           ant.scalatest :runpath=>dependencies.join(File::PATH_SEPARATOR) do
             ant.suite    :classname=>suite
@@ -163,7 +212,7 @@ end
 
 
 # Backwards compatibility stuff.  Remove in 1.5.
-module Buildr
+module Buildr#:nodoc:
   ScalaCheck = Scala::Check
   ScalaTest = Scala::ScalaTest
 end

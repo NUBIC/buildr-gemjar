@@ -1,8 +1,8 @@
---- 
-vendor/buildr: 
+--- !ruby/object:Hash
+vendor/buildr: !ruby/object:Hash
   branch: trunk
-  remote: braid/vendor/buildr
-  revision: 5c643a311d181f06e6c09b33b98a5a24c546d6b7
+  remote: trunk/braid/vendor/buildr
+  revision: e2d3eeb5ec41159b4b72729f332c48035a1f4cf9
   squashed: true
   type: git
   url: git://git.apache.org/buildr.git

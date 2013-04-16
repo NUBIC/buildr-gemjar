@@ -14,9 +14,7 @@
 # the License.
 
 
-require 'buildr/core/util'
-
-module Buildr::Clojure
+module Buildr::Clojure #:nodoc:
 
   REQUIRES = ArtifactNamespace.for(self) do |ns|
     ns.clojure! 'org.clojure:clojure:jar:1.2.0'

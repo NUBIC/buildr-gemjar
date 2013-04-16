@@ -13,12 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-require 'buildr/core/common'
-require 'buildr/core/project'
-require 'buildr/core/build'
-require 'buildr/core/compile'
-
-module Buildr
+module Buildr #:nodoc:
   class CCTask < Rake::Task
     attr_accessor :delay
     attr_reader :project
@@ -58,21 +53,27 @@ module Buildr
         build_failed(project, ex)
       end
 
-      dirs = []
+      srcs = []
       each_project do |p|
-        dirs += p.compile.sources.map(&:to_s)
-        dirs += p.test.compile.sources.map(&:to_s)
-        dirs += p.resources.sources.map(&:to_s)
+        srcs += p.compile.sources.map(&:to_s)
+        srcs += p.test.compile.sources.map(&:to_s)
+        srcs += p.resources.sources.map(&:to_s)
       end
-      if dirs.length == 1
-        info "Monitoring directory: #{dirs.first}"
+      if srcs.length == 1
+        info "Monitoring directory: #{srcs.first}"
       else
-        info "Monitoring directories: [#{dirs.join ', '}]"
+        info "Monitoring directories: [#{srcs.join ', '}]"
       end
 
       timestamps = lambda do
         times = {}
-        dirs.each { |d| Dir.glob("#{d}/**/*").map { |f| times[f] = File.mtime f } }
+        srcs.each do |a|
+          if File.directory? a
+            Dir.glob("#{a}/**/*").map { |f| times[f] = File.mtime f }
+          elsif File.exist? a
+            times[a] = File.mtime a
+          end
+        end
         times
       end
 

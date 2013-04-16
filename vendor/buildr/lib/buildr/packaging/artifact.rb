@@ -13,14 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/core/project'
-require 'buildr/core/transports'
-require 'buildr/packaging/artifact_namespace'
-require 'fileutils'
-
-
-module Buildr
+module Buildr #:nodoc:
 
   desc 'Download all artifacts'
   task 'artifacts'
@@ -146,14 +139,16 @@ module Buildr
     #
     # Creates POM XML for this artifact.
     def pom_xml
-      xml = Builder::XmlMarkup.new(:indent=>2)
-      xml.instruct!
-      xml.project do
-        xml.modelVersion  '4.0.0'
-        xml.groupId       group
-        xml.artifactId    id
-        xml.version       version
-        xml.classifier    classifier if classifier
+      Proc.new do
+        xml = Builder::XmlMarkup.new(:indent=>2)
+        xml.instruct!
+        xml.project do
+          xml.modelVersion  '4.0.0'
+          xml.groupId       group
+          xml.artifactId    id
+          xml.version       version
+          xml.classifier    classifier if classifier
+        end
       end
     end
 
@@ -212,8 +207,9 @@ module Buildr
 
         task = Rake::Task.define_task uri + path => deps do
           # Upload artifact relative to base URL, need to create path before uploading.
+          options = upload_to[:options] || {:permissions => upload_to[:permissions]}
           info "Deploying #{to_spec}"
-          URI.upload uri + path, name, :permissions=>upload_to[:permissions]
+          URI.upload uri + path, name, options
         end
       end
       task
@@ -378,6 +374,7 @@ module Buildr
 
     # :call-seq:
     #   content(string) => self
+    #   content(Proc) => self
     #
     # Use this when you want to install or upload an artifact from a given content, for example:
     #   readme = artifact('com.example:readme:txt:1.0').content(<<-EOF
@@ -385,13 +382,17 @@ module Buildr
     #   <<EOF
     #   install readme
     #
-    # If the argument is not a string, it will be converted to a string using to_s
+    # If the argument is a Proc the it will be called when the artifact is written out. If the result is not a proc
+    # and not a string, it will be converted to a string using to_s
     def content(string = nil)
-      return @content unless string
+      unless string
+        @content = @content.call if @content.is_a?(Proc)
+        return @content
+      end
 
       unless @content
         enhance do
-          write name, @content
+          write name, self.content
         end
 
         class << self
@@ -477,7 +478,8 @@ module Buildr
         error "No build number provided for the snapshot #{to_spec}" if build_number.nil?
         return nil if timestamp.nil? || build_number.nil?
         snapshot_of = version[0, version.size - 9]
-        repo_url + "#{group_path}/#{id}/#{version}/#{id}-#{snapshot_of}-#{timestamp.text}-#{build_number.text}.#{type}"
+        classifier_snippet = (classifier != nil) ? "-#{classifier}" : ""
+        repo_url + "#{group_path}/#{id}/#{version}/#{id}-#{snapshot_of}-#{timestamp.text}-#{build_number.text}#{classifier_snippet}.#{type}"
       rescue URI::NotFoundError
         nil
       end
@@ -807,28 +809,38 @@ module Buildr
       when Struct
         set |= artifacts(spec.values)
       else
-        fail "Invalid artifact specification in #{specs.inspect}"
+        if spec.respond_to? :to_spec
+          set |= artifacts(spec.to_spec)
+        else
+          fail "Invalid artifact specification in #{specs.inspect}"
+        end
       end
     end
   end
 
-  def transitive(*specs)
-    specs.flatten.inject([]) do |set, spec|
+  def transitive(*args)
+    options = Hash === args.last ? args.pop : {}
+    dep_opts = {
+      :scopes   => options[:scopes] || [nil, "compile", "runtime"],
+      :optional => options[:optional]
+    }
+    specs = args.flatten
+    specs.inject([]) do |set, spec|
       case spec
       when /([^:]+:){2,4}/ # A spec as opposed to a file name.
         artifact = artifact(spec)
         set |= [artifact] unless artifact.type == :pom
-        set |= POM.load(artifact.pom).dependencies.map { |spec| artifact(spec) }
+        set |= POM.load(artifact.pom).dependencies(dep_opts).map { |spec| artifact(spec) }
       when Hash
-        set |= [transitive(spec)]
+        set |= [transitive(spec, options)]
       when String # Must always expand path.
-        set |= transitive(file(File.expand_path(spec)))
+        set |= transitive(file(File.expand_path(spec)), options)
       when Project
-        set |= transitive(spec.packages)
+        set |= transitive(spec.packages, options)
       when Rake::Task
-        set |= spec.respond_to?(:to_spec) ? transitive(spec.to_spec) : [spec]
+        set |= spec.respond_to?(:to_spec) ? transitive(spec.to_spec, options) : [spec]
       when Struct
-        set |= transitive(spec.values)
+        set |= transitive(spec.values, options)
       else
         fail "Invalid artifact specification in: #{specs.to_s}"
       end

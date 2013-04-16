@@ -17,22 +17,15 @@
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'spec_helpers'))
 
 describe 'scala' do
-  # Specific version of Scala required for specs
-  required_version = '2.8.1'
-  scala_version_str = "2.8.1.final"
 
-  it 'should automatically add the remote scala-tools.org repository' do
+  it 'should automatically add the remote oss.sonatype.org repository' do
     # NOTE: the sandbox environment clears "repositories.remote" so we can't
     #       test for this spec right now.
     #
-    # repositories.remote.should include('http://scala-tools.org/repo-releases')
-  end
-
-  it "specifications require Scala #{required_version}" do
-    Scala.version.should eql(required_version)
+    # repositories.remote.should include('http://oss.sonatype.org/content/repositories/releases')
   end
 
   it "should provide the Scala version string" do
-    Scala.version_str.should eql(scala_version_str)
+    Scala.version_str.should eql(Buildr::Scala::SCALA_VERSION_FOR_SPECS)
   end
 end

@@ -13,22 +13,12 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-require 'buildr/core/common'
-require 'buildr/core/application'
-require 'buildr/core/jrebel'
-require 'buildr/core/project'
-require 'buildr/core/environment'
-require 'buildr/core/help'
-require 'buildr/core/build'
-require 'buildr/core/filter'
-require 'buildr/core/compile'
-require 'buildr/core/test'
-require 'buildr/core/shell'
-require 'buildr/core/run'
-require 'buildr/core/checks'
-require 'buildr/core/transports'
-require 'buildr/core/generate'
-require 'buildr/core/cc'
-require 'buildr/core/osx' if RUBY_PLATFORM =~ /darwin/
-require 'buildr/core/linux' if RUBY_PLATFORM =~ /linux/
+repositories.remote =  ["http://repo1.maven.org/maven2"]
+SLF4J_API = "org.slf4j:slf4j-api:jar:1.6.1"
 
+define "proj" do
+  project.version = "1.0"
+  project.group = "org.example"  
+  package(:zip).include(_("doc"), :as => "docu")
+  package(:zip).include(artifact(SLF4J_API), :as => "lib/logging.jar")
+end

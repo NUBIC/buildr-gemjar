@@ -16,14 +16,24 @@
 module Buildr
   module Bnd
     class << self
+      @@version = '1.50.0'
+      def version
+        @@version
+      end
+
+      def version=(newVersion)
+        @@version = newVersion
+      end
+
       # The specs for requirements
       def dependencies
-        ["biz.aQute:bnd:jar:0.0.384"]
+        ["biz.aQute:bnd:jar:#{version}"]
       end
 
       # Repositories containing the requirements
       def remote_repository
-        "http://www.aQute.biz/repo"
+        Buildr.application.deprecated "'Buildr:Bnd.remote_repository deprecated as the dependencies appear in maven central."
+        "http://www.aqute.biz/repo"
       end
 
       def bnd_main(*args)
@@ -46,7 +56,9 @@ module Buildr
 
       def classpath_element(dependencies)
         artifacts = Buildr.artifacts([dependencies])
-        self.prerequisites << artifacts
+        artifacts.each do |artifact|
+          self.prerequisites << artifact
+        end
         artifacts.each do |dependency|
           self.classpath << dependency.to_s
         end
@@ -100,7 +112,7 @@ module Buildr
             f.print params.collect { |k, v| "#{k}=#{v}" }.join("\n")
           end
 
-          Buildr::Bnd.bnd_main( "build", "-noeclipse", bnd_filename )
+          Buildr::Bnd.bnd_main( bnd_filename )
           begin
             Buildr::Bnd.bnd_main( "print", "-verify", filename )
           rescue => e

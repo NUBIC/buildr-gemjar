@@ -13,13 +13,10 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-require 'buildr/core/doc'
-require 'buildr/groovy/compiler'   # ensure Groovy dependencies are ready
+module Buildr #:nodoc:
+  module Doc #:nodoc:
 
-module Buildr
-  module Doc
-
-    module GroovydocDefaults
+    module GroovydocDefaults #:nodoc:
       include Extension
 
       # Default groovydoc -doc-title to project's comment or name
@@ -67,7 +64,7 @@ module Buildr
     end
   end
 
-  class Project
+  class Project #:nodoc:
     include GroovydocDefaults
   end
 end

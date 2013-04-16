@@ -13,11 +13,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-require 'buildr/core/doc'
-require 'buildr/scala/compiler'   # ensure Scala dependencies are ready
-
-module Buildr
-  module Doc
+module Buildr #:nodoc:
+  module Doc #:nodoc:
 
     module ScaladocDefaults
       include Extension
@@ -26,8 +23,13 @@ module Buildr
       after_define(:scaladoc => :doc) do |project|
         if project.doc.engine? Scaladoc
           options = project.doc.options
-          key = Scala.compatible_28? ? "doc-title".to_sym : :windowtitle
-          options[key] = (project.comment || project.name) unless options[key]
+          if Scala.version?(2.7)
+            options[:windowtitle] = (project.comment || project.name) unless options[:windowtitle]
+          else
+            doc_title = "doc-title".to_sym
+            options[doc_title] = (project.comment || project.name) unless options[doc_title]
+            options.delete(:windowtitle) if options[:windowtitle]
+          end
         end
       end
     end
@@ -36,7 +38,8 @@ module Buildr
       specify :language => :scala, :source_ext => 'scala'
 
       def generate(sources, target, options = {})
-        cmd_args = [ '-d', target, trace?(:scaladoc) ? '-verbose' : '' ]
+        cmd_args = [ '-d', target]
+        cmd_args << '-verbose' if trace?(:scaladoc)
         options.reject { |key, value| [:sourcepath, :classpath].include?(key) }.
           each { |key, value| value.invoke if value.respond_to?(:invoke) }.
           each do |key, value|
@@ -62,7 +65,12 @@ module Buildr
           trace (['scaladoc'] + cmd_args).join(' ')
           Java.load
           begin
-            Java.scala.tools.nsc.ScalaDoc.process(cmd_args.to_java(Java.java.lang.String))
+            if Scala.version?(2.7, 2.8)
+              Java.scala.tools.nsc.ScalaDoc.process(cmd_args.to_java(Java.java.lang.String))
+            else
+              scaladoc = Java.scala.tools.nsc.ScalaDoc.new
+              scaladoc.process(cmd_args.to_java(Java.java.lang.String))
+            end
           rescue => e
             fail 'Failed to generate Scaladocs, see errors above: ' + e
           end
@@ -72,15 +80,21 @@ module Buildr
 
     class VScaladoc < Base
       VERSION = '1.2-m1'
-      Buildr.repositories.remote << 'http://scala-tools.org/repo-snapshots'
+      Buildr.repositories.remote << 'https://oss.sonatype.org/content/groups/scala-tools'
 
       class << self
         def dependencies
-          [ "org.scala-tools:vscaladoc:jar:#{VERSION}" ]
+          case
+            when Buildr::Scala.version?("2.7")
+              [ "org.scala-tools:vscaladoc:jar:#{VERSION}" ]
+            else
+              warn "VScalaDoc not supported for Scala 2.8+"
+              []
+          end
         end
       end
 
-      Java.classpath << dependencies
+      Java.classpath << lambda { dependencies }
 
       specify :language => :scala, :source_ext => 'scala'
 
@@ -132,7 +146,7 @@ module Buildr
     end
   end
 
-  class Project
+  class Project #:nodoc:
     include ScaladocDefaults
     include Packaging::Scala
   end

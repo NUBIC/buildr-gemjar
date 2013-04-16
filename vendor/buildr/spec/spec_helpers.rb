@@ -14,7 +14,7 @@
 # the License.
 
 
-# This file gets loaded twice when running 'spec spec/*' and not with pleasent results,
+# This file gets loaded twice when running 'spec spec/*' and not with pleasant results,
 # so ignore the second attempt to load it.
 unless defined?(SpecHelpers)
 
@@ -31,7 +31,7 @@ unless defined?(SpecHelpers)
                      File.expand_path('../addon', File.dirname(__FILE__))
 
   # Buildr uses autoload extensively, but autoload when running specs creates
-  # a problem -- we sandbox $LOADED_FEATURES, so we endup autoloading the same
+  # a problem -- we sandbox $LOADED_FEATURES, so we end up autoloading the same
   # module twice. This turns autoload into a require, which is not the right
   # thing, but will do for now.
   def autoload(symbol, path)
@@ -251,7 +251,11 @@ unless defined?(SpecHelpers)
       end
 
       def description
-        "URI with path matching #{@expression}"
+        "URI with path matching #{@expression} vs #{@uri}"
+      end
+
+      def failure_message_for_should
+        "expected #{description}"
       end
     end
 
@@ -358,11 +362,12 @@ unless defined?(SpecHelpers)
 
 
   ::RSpec.configure do |config|
+    config.treat_symbols_as_metadata_keys_with_true_values = true
     # Make all Buildr methods accessible from test cases, and add various helper methods.
     config.include Buildr
     config.include SpecHelpers
 
-    # Sanbdox Buildr for each test.
+    # Sandbox Buildr for each test.
     config.include Sandbox
   end
 

@@ -13,13 +13,12 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-# necessary to require YAML even if it is mentioned by autoload as it fails on some platforms.
+# It is necessary to require these files here as the bdd plugin directly includes this file
 require 'yaml'
-require 'fileutils'
 require 'rspec/core/formatters/base_formatter'
 
 module Buildr #:nodoc:
-  module TestFramework
+  module TestFramework #:nodoc:
 
     # A class used by buildr for jruby based frameworks, so that buildr can know
     # which tests succeeded/failed.

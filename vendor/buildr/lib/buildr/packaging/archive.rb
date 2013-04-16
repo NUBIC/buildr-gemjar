@@ -13,8 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-module Buildr
+module Buildr #:nodoc:
 
   # Base class for ZipTask, TarTask and other archives.
   class ArchiveTask < Rake::FileTask
@@ -187,7 +186,7 @@ module Buildr
         when ArtifactNamespace
           set |= file.artifacts
         when Symbol, Hash
-          set |= [artifact(file)]
+          set |= [Buildr.artifact(file)]
         when /([^:]+:){2,4}/ # A spec as opposed to a file name.
           set |= [Buildr.artifact(file)]
         when Project

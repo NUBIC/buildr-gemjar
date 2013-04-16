@@ -14,4 +14,9 @@ _all-in-one
 nbproject
 .rakeTasks
 buildr.iml
+buildr.ipr
+buildr.iws
 libs
+Gemfile.lock
+*.rbc
+/site

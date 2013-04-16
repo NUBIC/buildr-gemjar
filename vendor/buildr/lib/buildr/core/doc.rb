@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-module Buildr
+module Buildr #:nodoc:
   module Doc
     include Extension
 
@@ -112,7 +112,13 @@ module Buildr
       # Includes additional source files and directories when generating the documentation
       # and returns self. When specifying a directory, includes all source files in that directory.
       def include(*files)
-        @files.include *files.flatten.compact
+        files.each do |file|
+          if file.respond_to? :to_ary
+            include(*file.to_ary)
+          else
+            @files.include *files.flatten.compact.collect { |f| File.expand_path(f.to_s) }
+          end
+        end
         self
       end
 
@@ -121,7 +127,7 @@ module Buildr
       #
       # Excludes source files and directories from generating the documentation.
       def exclude(*files)
-        @files.exclude *files
+        @files.exclude *files.collect{|f|File.expand_path(f)}
         self
       end
 
@@ -205,7 +211,7 @@ module Buildr
       def source_files #:nodoc:
         @source_files ||= @files.map(&:to_s).map do |file|
           Array(engine.class.source_ext).map do |ext|
-            File.directory?(file) ? FileList[File.join(file, "**/*.#{ext}")] : file
+            File.directory?(file) ? FileList[File.join(file, "**/*.#{ext}")] : File.expand_path(file)
           end
         end.flatten.reject { |file| @files.exclude?(file) }
       end
@@ -269,8 +275,7 @@ module Buildr
     end
   end
 
-
-  class Project
+  class Project #:nodoc:
     include Doc
   end
 end

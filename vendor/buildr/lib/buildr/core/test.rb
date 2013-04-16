@@ -13,13 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/core/project'
-require 'buildr/core/build'
-require 'buildr/core/compile'
-
-
-module Buildr
+module Buildr #:nodoc:
 
   # The underlying test framework used by TestTask.
   # To add a new test framework, extend TestFramework::Base and add your framework using:
@@ -145,7 +139,7 @@ module Buildr
   # cases are written in Java, then JUnit is selected as the test framework.  You can also select
   # a specific test framework, for example, to use TestNG instead of JUnit:
   #   test.using :testng
-  class TestTask < Rake::Task
+  class TestTask < ::Rake::Task
 
     class << self
 

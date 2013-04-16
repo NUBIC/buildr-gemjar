@@ -13,13 +13,12 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+repositories.remote =  ["http://repo1.maven.org/maven2"]
+SLF4J_API = "org.slf4j:slf4j-api:jar:1.6.1"
 
-require RUBY_PLATFORM == 'java' ? 'buildr/java/jruby' : 'buildr/java/rjb'
-require 'buildr/java/compiler'
-require 'buildr/java/external'
-require 'buildr/java/tests'
-require 'buildr/java/bdd'
-require 'buildr/java/packaging'
-require 'buildr/java/commands'
-require 'buildr/java/doc'
-require 'buildr/java/deprecated'
+define "proj" do
+  project.version = "1.0"
+  project.group = "org.example"  
+  package(:zip).include(_("doc"), :path => "distrib")
+  package(:zip).include(artifact(SLF4J_API), :path => "distrib/lib")
+end

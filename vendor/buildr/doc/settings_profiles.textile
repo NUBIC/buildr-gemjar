@@ -81,7 +81,7 @@ repositories:
    - https://intra.net/maven2
    - http://example.com
 
-  relase_to:
+  release_to:
     url: http://intra.net/maven2
     username: john
     password: secret
@@ -97,7 +97,7 @@ im:
 Later your buildfile or addons can reference user preferences using the  hash returned by the @Buildr.settings.user@ accessor.
 
 {% highlight ruby %}
-task 'relase-notification' do
+task 'release-notification' do
  usr, pwd, server = settings.user['im'].values_at('usr', 'pwd', 'server')
  jabber = JabberAPI.new(server, usr, pwd)
  jabber.msg("We are pleased to announce the last stable version #{VERSION}")
@@ -166,7 +166,7 @@ Build settings can be retreived using the @Buildr.settings.build@ accessor.
 
 h2(#variable). Non constant settings
 
-Before loading the Buildfile, Buildr will attempt to load two other files: the @buildr.rb@ file in the @.buildr@ directory under your home directory, followed by the @buildr.rb@ file it finds in the build directory.
+Before loading the Buildfile, Buildr will attempt to load two other files: the @buildr.rb@ file in the @.buildr@ directory under your home directory, followed by the @_buildr.rb@ (or @.buildr.rb@) file it finds in the build directory.
 
 The loading order allows you to place global settings that affect all your builds in your @buildr.rb@, but also over-ride those with settings for a given project.
 

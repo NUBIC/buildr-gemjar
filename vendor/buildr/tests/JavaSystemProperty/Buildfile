@@ -14,5 +14,5 @@
 # the License.
 
 define "proj" do
-  Java.java.lang.System.setProperty("foo", "bar")
+  ::Java.java.lang.System.setProperty("foo", "bar")
 end

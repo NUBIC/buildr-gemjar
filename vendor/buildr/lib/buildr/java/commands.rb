@@ -13,7 +13,6 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
 # Base module for all things Java.
 module Java
 
@@ -34,6 +33,7 @@ module Java
       #       "-o", "src/main/webapp/styles/styles-all-min.css")
       #
       # The last argument may be a Hash with additional options:
+      # * :dir -- The working directory from which to execute task..
       # * :classpath -- One or more file names, tasks or artifact specifications.
       #   These are all expanded into artifacts, and all tasks are invoked.
       # * :java_args -- Any additional arguments to pass (e.g. -hotspot, -xms)
@@ -50,18 +50,56 @@ module Java
           name = "java #{args.first}"
         end
 
-        cmd_args = [path_to_bin('java')]
+        cmd_args = []
+        if options[:dir]
+          pwd = options[:dir]
+          if Buildr::Util.win_os?
+            # Ruby uses forward slashes regardless of platform,
+            # unfortunately cd c:/some/path fails on Windows
+            cmd_args << "cd /d \"#{pwd.gsub(%r{/}, '\\')}\" && "
+          else
+            cmd_args << "cd '#{pwd}' && "
+          end
+        end
+        cmd_args << path_to_bin('java')
         cp = classpath_from(options)
         cmd_args << '-classpath' << cp.join(File::PATH_SEPARATOR) unless cp.empty?
         options[:properties].each { |k, v| cmd_args << "-D#{k}=#{v}" } if options[:properties]
         cmd_args += (options[:java_args] || (ENV['JAVA_OPTS'] || ENV['JAVA_OPTIONS']).to_s.split).flatten
         cmd_args += args.flatten.compact
-        unless Buildr.application.options.dryrun
-          info "Running #{name}" if name && options[:verbose]
-          block = lambda { |ok, res| fail "Failed to execute #{name}, see errors above" unless ok } unless block
-          cmd_args = cmd_args.map(&:inspect).join(' ') if Util.win_os?
-          sh(*cmd_args) do |ok, ps|
-            block.call ok, ps
+
+        tmp = nil
+        begin
+            # Windows can't handle cmd lines greater than 2048/8192 chars.
+            # If our cmd line is longer, we create a batch file and execute it instead.
+          if Util.win_os? &&  cmd_args.map(&:inspect).join(' ').size > 2048
+            # remove '-classpath' and the classpath itself from the cmd line.
+            cp_i = cmd_args.index{|x| x.to_s =~ /^-classpath/}
+            2.times do
+              cmd_args.delete_at cp_i unless cp_i.nil?
+            end
+            # create tmp batch file.
+            tmp = Tempfile.new(['starter', '.bat'])
+            tmp.write "@echo off\n"
+            tmp.write "SET CLASSPATH=#{cp.join(File::PATH_SEPARATOR).gsub(%r{/}, '\\')}\n"
+            tmp.write cmd_args.map(&:inspect).join(' ')
+            tmp.close
+            # set new cmd line.
+            cmd_args = [tmp.path]
+          end
+          
+          unless Buildr.application.options.dryrun
+            info "Running #{name}" if name && options[:verbose]
+            block = lambda { |ok, res| fail "Failed to execute #{name}, see errors above" unless ok } unless block
+            cmd_args = cmd_args.map(&:inspect).join(' ') if Util.win_os?
+            sh(*cmd_args) do |ok, ps|
+              block.call ok, ps
+            end
+          end
+        ensure
+          unless tmp.nil?
+            tmp.close 
+            tmp.unlink
           end
         end
       end

@@ -13,15 +13,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/core/project'
-require 'buildr/core/common'
-require 'buildr/core/compile'
-require 'buildr/packaging'
-
-
-module Buildr
-  module Compiler
+module Buildr #:nodoc:
+  module Compiler #:nodoc:
 
     # Javac compiler:
     #   compile.using(:javac)
@@ -130,6 +123,6 @@ module Buildr
 end
 
 Buildr::Compiler << Buildr::Compiler::Javac
-class Buildr::Project
+class Buildr::Project #:nodoc:
   include Buildr::Apt
 end

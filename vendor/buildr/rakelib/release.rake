@@ -13,39 +13,36 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-task :release do
+desc "Release the next version of buildr from existing staged repository"
+task 'release' => %w{setup-local-site-svn} do
   # First, we need to get all the staged files from Apache to _release.
   mkpath '_release'
   lambda do
     url = "people.apache.org:~/public_html/#{spec.name}/#{spec.version}"
     puts "Populating _release directory from #{url} ..."
     sh 'rsync', '--progress', '--recursive', url, '_release'
-    puts "[X] Staged files are now in _release"
+    puts '[X] Staged files are now in _release'
   end.call
-
 
   # Upload binary and source packages and new Web site
   lambda do
     target = "people.apache.org:/www/www.apache.org/dist/#{spec.name}/#{spec.version}"
-    puts "Uploading packages to www.apache.org/dist ..."
+    puts 'Uploading packages to www.apache.org/dist ...'
     host, remote_dir = target.split(':')
     sh 'ssh', host, 'rm', '-rf', remote_dir rescue nil
     sh 'ssh', host, 'mkdir', remote_dir
-    sh 'rsync', '--progress', '--recursive', "_release/#{spec.version}/dist/", target
-    puts "[X] Uploaded packages to www.apache.org/dist"
+    sh 'rsync', '--progress', '--recursive', '--delete', "_release/#{spec.version}/dist/", target
+    sh 'ssh', 'people.apache.org', 'chmod', '-f', '-R', 'g+w', "#{remote_dir}/*"
+    puts '[X] Uploaded packages to www.apache.org/dist'
 
-    target = "people.apache.org:/www/#{spec.name}.apache.org/"
     puts "Uploading new site to #{spec.name}.apache.org ..."
-    sh 'rsync', '--progress', '--recursive', '--delete', "_release/#{spec.version}/site/", target
-    sh 'ssh', 'people.apache.org', 'chmod', '-R', 'g+w', "/www/#{spec.name}.apache.org/*"
+    sh 'rsync', '--progress', '--recursive', '--exclude', '.svn', '--delete', "_release/#{spec.version}/site/", 'site'
+    task('publish-site-svn').invoke
     puts "[X] Uploaded new site to #{spec.name}.apache.org"
   end.call
 
-
   # Upload binary and source packages to RubyForge.
   lambda do
-    sh 'rubyforge', 'login'
     # update rubyforge projects, processors, etc. in local config
     sh 'rubyforge', 'config'
     files = FileList["_release/#{spec.version}/dist/*.{gem,tgz,zip}"]
@@ -69,8 +66,8 @@ task :release do
       puts "Push gem #{f} to RubyForge.org / Gemcutter ... "
       `gem push #{f}`
     end
-    puts "[X] Pushed gems to Rubyforge.org / Gemcutter"
-  end
+    puts '[X] Pushed gems to Rubyforge.org / Gemcutter'
+  end.call
 
   # Create an SVN tag for this release.
   lambda do
@@ -82,7 +79,7 @@ task :release do
           if ok
             puts "[X] Tagged this release as tags/#{spec.version} ... "
           else
-            puts "Could not create tag, please do it yourself!"
+            puts 'Could not create tag, please do it yourself!'
             puts %{  svn copy #{url} #{new_url} -m "Release #{spec.version}"}
           end
         end
@@ -99,34 +96,47 @@ task :release do
     File.open 'CHANGELOG', 'w' do |file|
       file.write modified
     end
-    puts "[X] Updated CHANGELOG and added entry for next release"
+    puts '[X] Updated CHANGELOG and added entry for next release'
   end.call
-
 
   # Update source files to next release number.
   lambda do
     next_version = spec.version.to_s.split('.').map { |v| v.to_i }.
       zip([0, 0, 1]).map { |a| a.inject(0) { |t,i| t + i } }.join('.')
 
-    ver_file = "lib/#{spec.name}.rb"
+    ver_file = "lib/#{spec.name}/version.rb"
     if File.exist?(ver_file)
-      modified = File.read(ver_file).sub(/(VERSION\s*=\s*)(['"])(.*)\2/) { |line| "#{$1}#{$2}#{next_version}#{$2}" }
+      modified = File.read(ver_file).sub(/(VERSION\s*=\s*)(['"])(.*)\2/) { |line| "#{$1}#{$2}#{next_version}.dev#{$2}" }
       File.open ver_file, 'w' do |file|
         file.write modified
       end
       puts "[X] Updated #{ver_file} to next release"
     end
-
-    spec_file = "#{spec.name}.gemspec"
-    if File.exist?(spec_file)
-      modified = File.read(spec_file).sub(/(s(?:pec)?\.version\s*=\s*)(['"])(.*)\2/) { |line| "#{$1}#{$2}#{next_version}#{$2}" }
-      File.open spec_file, 'w' do |file|
-        file.write modified
-      end
-      puts "[X] Updated #{spec_file} to next release"
-    end
   end.call
 
+  # Update doap file for current release.
+  lambda do
+    doap_file = "doap.rdf"
+    release_date = File.read("_release/#{spec.version}/CHANGES").scan(/#{spec.version} \((.*)\)/).flatten[0]
+    changes = File.read("_release/#{spec.version}/CHANGES")[/.*?\n(.*)/m, 1]
+    doap_entry = <<DOAP
+    <release>
+      <Version>
+        <name>#{spec.version}</name>
+        <created>#{release_date}</created>
+        <revision>#{spec.version}</revision>
+        <dc:description>
+#{changes}
+        </dc:description>
+      </Version>
+    </release>
+DOAP
+    modified = File.read(doap_file).sub(/^    \<category.* \/\>$/) { |category_line| "#{category_line}\n#{doap_entry}" }
+    File.open doap_file, 'w' do |file|
+      file.write modified
+    end
+    puts "[X] Updated #{doap_file} for current release"
+  end.call
 
   # Prepare release announcement email.
   lambda do
@@ -151,11 +161,9 @@ The Apache Buildr Team
     File.open 'announce-email.txt', 'w' do |file|
       file.write email
     end
-    puts "[X] Created release announce email template in 'announce-email.txt'"
+    puts '[X] Created release announce email template in ''announce-email.txt'''
     puts email
-  end
-
+  end.call
 end
 
-
-task(:clobber) { rm_rf '_release' }
+task('clobber') { rm_rf '_release' }

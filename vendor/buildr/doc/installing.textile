@@ -3,6 +3,21 @@ layout: default
 title: Installing and Running
 ---
 
+h1(#all-in-one). All In One Bundle
+
+Contributors to this project maintain a separate distribution over on "RubyForge":http://rubyforge.org/projects/buildr. Using this distribution, it is possible to install Buildr just like you would install Apache Ant or Apache Maven. It comes bundled with JRuby and distributed as a cross-platform zip or tar.gz file.
+
+The RubyForge distribution is *not* an official Apache distribution. The all-in-one bundles are hosted on the "Files page":http://rubyforge.org/frs/?group_id=3180.
+
+*In details:* Navigate to "Rubyforge's buildr's Files page":http://rubyforge.org/frs/?group_id=3180 and download the all-in-one bundle for the latest version available.
+
+Unzip the bundle in a convenient location. 
+
+You can execute the buildr executable under the bin directory directly. 
+
+You should consider adding the bin directory of the result to the @PATH@ global environment variable. See "Installing Buildr for JRuby":#jruby for instructions to update it.  
+
+h1(#the-gem). Installing the gem
 
 *The easy way:*  We recommend you pick the platform you want to run Buildr on and then follow the _easy way_ instructions for that platform.  It could save you an hour or two struggling to install all the right dependencies.
 
@@ -116,13 +131,7 @@ h2(#windows).  Installing on Windows
 
 <br>
 
-*In details:* We recommend you first upgrade to the latest version of Ruby gems:
-
-{% highlight sh %}
-> gem update --system
-{% endhighlight %}
-
-Before installing Buildr, please set the @JAVA_HOME@ environment variable to point to your JDK distribution.  Next, use Ruby Gem to install Buildr:
+*In details:* Before installing Buildr, please set the @JAVA_HOME@ environment variable to point to your JDK distribution.  Next, use Ruby Gem to install Buildr:
 
 {% highlight sh %}
 > gem install buildr --platform mswin32
@@ -137,11 +146,11 @@ To upgrade to a new version or install a specific version:
 
 h2(#jruby).  Installing for JRuby
 
-*The easy way:* Use this bash script to "install Buildr on JRuby":scripts/install-jruby.sh.  This script will install the most recent version of Buildr, or if already installed, upgrade to the most recent version.  If necessary, it will also install JRuby 1.1.6 in @/opt/jruby@ and update the @PATH@ variable in @~/.bash_profile@ or @~/.profile@.
+*The easy way:* Use this bash script to "install Buildr on JRuby":scripts/install-jruby.sh.  This script will install the most recent version of Buildr, or if already installed, upgrade to the most recent version.  If necessary, it will also install JRuby 1.6.1 in @/opt/jruby@ and update the @PATH@ variable in @~/.bash_profile@ or @~/.profile@.
 
 <br>
 
-*In details:* If you don't already have JRuby 1.1.6 or later installed, you can download it from the "JRuby site":http://dist.codehaus.org/jruby/.
+*In details:* If you don't already have JRuby 1.5.1 or later installed, you can download it from the "JRuby site":http://www.jruby.org/download.
 
 After uncompressing JRuby, update your @PATH@ to include both @java@ and @jruby@ executables.
 
@@ -222,7 +231,8 @@ There are several options you can use, for a full list of options type @buildr -
 | @-q/--quiet@              | Do not log messages to standard output.                 |
 | @-r/--require [file]@     | Require MODULE before executing buildfile.              |
 | @-t/--trace@              | Turn on invoke/execute tracing, enable full backtrace.  |
-| @-v/--version@            | Display the program version.                            |
+| @-v/--verbose@            | Log message to standard output                          |
+| @-V/--version@            | Display the program version.                            |
 | @-P/--prereqs@            | Display tasks and dependencies, then exit.              |
 
 You can tell Buildr to run specific tasks and the order to run them.  For example:

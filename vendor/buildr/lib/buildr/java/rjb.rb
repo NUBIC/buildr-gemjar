@@ -13,6 +13,11 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+if RbConfig::CONFIG['host_os'] =~ /darwin/i
+  # On OS X we attempt to guess where JAVA_HOME is, if not set
+  # We set JAVA_HOME early so we can use it without calling Java.load first.
+  ENV['JAVA_HOME'] ||= '/System/Library/Frameworks/JavaVM.framework/Home'
+end
 
 require 'rjb'
 
@@ -71,10 +76,6 @@ module Java
     end
 
   end
-
-  # On OS X we know where the default JDK is. We can try to guess for other OS.
-  # We set JAVA_HOME early so we can use it without calling Java.load first.
-  ENV['JAVA_HOME'] ||= '/System/Library/Frameworks/JavaVM.framework/Home' if Config::CONFIG['host_os'] =~ /darwin/i
 
   class << self
 
@@ -144,8 +145,7 @@ module Java
 
 end
 
-
-class Array
+class Array #:nodoc:
   # Converts a Ruby array into a typed Java array, argument specifies the element type.
   # This is necessary for JRuby and causes no harm on RJB.
   def to_java(cls)

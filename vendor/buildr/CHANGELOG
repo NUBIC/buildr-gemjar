@@ -1,5 +1,217 @@
-1.4.5 (Pending)
-* Change: BUILDR-556 Merge buildr-iidea extension back into buildr.
+1.4.12 (Pending)
+* Change: BUILDR-664 Update Checkstyle addon so that extra_dependencies is
+          empty by default.
+* Fixed:  BUILDR-663 require 'buildr' fails for Ruby 2.0.0.
+* Fixed:  BUILDR-665 Java artifacts in build.yaml breaking ArchiveTask.
+          Submitted by Antonio Pérez Barrero.
+* Fixed:  BUILDR-662 reported time is much shorter than actual
+
+1.4.11 (2013-03-14)
+* Fixed:  Multiple tests in TestNG 6.x versions were being incorrectly passed to
+          the command line application.
+
+1.4.10 (2013-02-10)
+* Added:  Support a single intermediate directory for each project hierarchy
+          through an addon 'buildr/single_intermediate_layout'.
+* Fixed:  BUILDR-660 possible build issue when using build.yaml and tasks/*.rake
+          (Félix Enrique Llorente Pastora)
+* Added:  Support the :dir option in the Java::Commands.java method.
+* Fixed:  Scala 2.10 support - compiler now uses additional/separate jars
+          introduced in 2.10 such as scala-reflect.jar and scala-actor.jar
+* Added:  Add an addon for NSIS.
+* Change: BUILDR-612 - Support the TestNG 6.x versions and default
+          to 6.8.
+* Added:  BUILDR-599 - Support the passing of arguments to testng
+          test runner.
+* Fixed:  Observer the per-project source version when generating
+          IDEA module files.
+* Change: Sort the components in IDEA project files in the same
+          order the idea sorts them.
+* Fixed:  Findbugs addon correctly handles String dependencies
+          (vs task dependencies)
+* Fixed:  Checkstyle addon correctly handles String dependencies
+          (vs task dependencies)
+* Added:  Created an addon 'buildr/wsgen' for generating wsdls from java
+          and java from wsdls using the underlying wsgen tool.
+* Change: Defer the expansion of generated poms by wrapping the generation
+          in a Proc.
+* Change: Rework Artifact.content(value) method to accept a Proc that
+          will be called before the artifact is written rather than
+          requiring a string.
+* Added:  Create a 'buildr/gpg' addon that signs and uploads signatures
+          when uploading artifacts. Inspired by a similar extension in
+          the Apache ODE project by Tammo van Lessen.
+* Change: Updated dependency versions;
+          - jruby-openssl (0.8.2)
+          - atoulme-Antwrap (0.7.4)
+* Change: Require 'bundler/setup' as part of buildr startup to ensure that
+          buildr always runs with up to date dependencies if a Gemfile is
+          present.
+* Added:  Add FrameworkDetectionExcludesConfiguration facet to Idea project
+          file creation by default.
+* Fixed:  In the IntelliJ extension, defer the materialization of the
+          default_components until expansion time to avoid loss of sub-
+          components added after an add_component call.
+* Fixed:  BUILDR-633 - Remove hardcoded shebang lines in all-in-one release.
+* Added:  Create a simple extension that modifies the project layout to place
+          generated files at the top level.
+
+1.4.9 (2012-11-08)
+* Fixed:  Fixed the interaction with the FileUtils classes. The last release
+          introduced a non-deterministic bug that sometimes caused logging
+          preferences to be ignored and the install method to be
+          inadvertently overwritten.
+
+1.4.8 (2012-11-01)
+* Change: Revert to importing non-verbose FileUtils utility methods to match buildr 1.4.6 release and earlier.
+* Added:  Experimental support for jacoco code coverage tool.
+* Fixed:  BUILDR-655 - Support JDK1.7 under OSX
+* Change: Updated dependency versions;
+          - builder (3.1.3)
+          - rubyforge (2.0.4)
+          - net-ssh (2.6.0)
+          - hoe (3.1.0)
+          - rjb (1.4.2)
+          - rdoc (3.12)
+          - xml-simple (1.1.1)
+          - rspec-expectations (2.11.3)
+          - rspec-mocks (2.11.3)
+          - rspec-core (2.11.1)
+          - rspec (2.11.0)
+          - rubyzip (0.9.9)
+* Added:  BUILDR-652 Generate buildfile from Eclipse workspace. (Niklaus Giger)
+* Fixed:  BUILDR-627 Support explicitly listed source files in buildr cc task. (Christopher Tiwald)
+* Fixed:  BUILDR-606 Transitive artifact resolution should not include artifacts in 'provided' scope in poms to
+          match maven behaviour. (Julio Arias)
+* Change: BUILDR-640 Enable building jekyll and rdoc under more rubies. (Niklaus Giger)
+* Change: Mark Buildr:Bnd.remote_repository as deprecated as dependencies appear in maven central.
+* Added:  BUILDR-654 Add the ability to configure the version of BND used by bnd addon. (Niklaus Giger)
+* Added:  Create the git_auto_version addon that automatically specifies a version for a git project based
+          on git describe.
+* Added:  Integrate with Zinc (incremental compilation wrapper for scalac 2.9+)
+* Change: Default to Scala 2.9.2, ScalaTest 1.8, Scala Specs2 1.11,
+          ScalaCheck 1.10.0.
+* Change: Scala artifact repository changed to
+          http://oss.sonatype.org/content/repositories/releases
+* Added:  BUILDR-645 Support Mercurial as a version control system (Tan Quach)
+* Fixed:  BUILDR-646 TGZ files do not keep their permissions when extracted
+          via Buildr::Unzip#extract
+* Added:  Add add_exploded_ear_artifact and add_exploded_ejb_artifact to the idea project extension.
+* Change: Default to using Checkstyle 5.5 in the checkstyle addon.
+* Fixed:  Fix the add_exploded_war_artifact method on the idea project by adding in missing method
+          `partition_dependencies`.
+* Fixed:  Fix the extension of the gwt plugin so that it can be required as an addon.
+* Fixed:  Fix the undefined default_web_xml variable in the add_web_facet method on the idea project.
+
+1.4.7 (2012-05-29)
+* Added:  BUILDR-618 pom properties feature does not support hierarchy (kafka liu)
+* Added:  Add a Sonar extension.
+* Change: BUILDR-638 Update to rake 0.9.2.2 (Russell Teabeault)
+* Added:  BUILDR-316 Add a GWT extension
+* Change: BUILDR-624 Update rspec version to 2.9.0 (Russell Teabeault)
+* Change: BUILDR-632 Update net-ssh version to 2.3.0 (Russell Teabeault)
+* Change: BUILDR-632 Update net-sftp version to 2.0.5 (Russell Teabeault)
+* Fixed:  BUILDR-635 JRE container entry to be declared before user sources and dependencies (Dani Perez)
+* Change: BUILDR-639 Stop requiring pygmentize to run "rake -T" (Russell Teabeault)
+* Added:  Enhance the IDEA extension to support the addition of several explicit facets such as
+          ejb, jruby, jpa, web and gwt.
+* Added:  Add several utility methods to IDEA extension for defining artifacts and configurations.
+          Add some explicit methods to support a gwt configuration and a "Exploded War" artifact.
+* Change: Upgraded to Apache Ant 1.8.3
+* Change: Default maven2 repository is now repo1.maven.org/maven2.
+* Change: Make minimumTokenCount and encoding configurable for the PMD/CPD action
+          and default encoding to UTF-8 for compatibility with external tools (i.e. Jenkins)
+* Change: BUILDR-615 VersionRequirement.version? now returns true for
+          versions following pattern "r9999", e.g. "r09"
+* Change: BUILDR-630 Run task should not add test dependencies (Russell Teabeault)
+* Change: BUILDR-629 JavaRunner should include target/resources in classpath (Russell Teabeault)
+* Fixed:  BUILDR-617 pom exclusion does not work (Kafka Liu)
+* Added:  Add a Findbugs extension.
+* Added:  Add a Checkstyle extension.
+* Added:  Add a JavaNCSS extension.
+* Added:  Add a PMD extension.
+* Added:  MultiTest framework that allows combining multiple test frameworks
+          for a single project.
+* Added:  Scala Specs2 framework support.
+* Added:  Buildr.transitive() now accepts hash with :scopes, :optional and
+          :scopes_transitive parameters
+* Added:  Improved scala file change detection
+          (to avoid recompiling  unnecessarily)
+* Added:  ScalaTest now automatically loads the Mockito library
+* Added:  Enhance the Intellij IDEA extension to support the addition of "artifacts"
+          and "configurations" to the generated project file.
+* Added:  BUILDR-598 TestNG support for :groups and :excludegroups (Christopher Coco)
+* Added:  BUILDR-616 Buildr development - If using rvm a default .rvmrc file would be helpful (Russell Teabeault)
+* Change: Scala Specs upgraded to 1.6.9 if using Scala 2.9.1
+* Change: Scala 2.9.1 is now default
+* Change: Make it possible to parameterize the JDepend extension and control the
+          projects that are included in the analysis and to enable support for
+          loading a per project jdepend.properties.
+* Change: Parameterize the the directory where the top level cobertura tasks will generate
+          reports. Specify using Buildr::Cobertura.report_dir = '....'
+* Change: Stop pretty printing the Intellij IDEA project files to avoid IDEA breaking
+          in the presence of non-normalized whitespace content.
+* Change: Change the Intellij IDEA extension to always rebuild the project files.
+* Change: Upgrade to require atoulme-Antwrap 0.7.2
+* Change: Changed the default output directory for Intellij IDEA extension to be
+          _(:target, :main, :idea, :classes) from _(:target, :main, :java) and the
+          default test output directory to be _(:target, :test, :idea, :classes)
+          from _(:target, :test, :java)
+* Change: Upgrade to highline 1.6.2
+* Change: Upgrade to jekyll 0.11.0, jekylltask 1.1.0, RedCloth 4.2.7, rdoc 3.8 for
+          generating documentation
+* Change: Upgrade to require rubygems > 1.8.6
+* Change: BUILDR-603 Remove install/uninstall actions from :gem packaging type
+* Change: BUILDR-602 Fail the build when gem dependencies are missing rather than
+          attempting to install the dependencies
+* Change: BUILDR-601 Remove Buildr::Util::Gems
+* Change: BUILDR-600 Centralize the common ad internal requires into one location.
+* Change: Upgrade to JRuby 1.6.2
+* Change: Move to Bundler to manage the project dependencies
+* Change: BUILDR-548 Remove support for JTestR as it is no longer maintained (Antoine Toulme)
+* Change: BUILDR-614 Buildr development - Using rvm, bundler and OSX installs the wrong rjb (Russell Teabeault)
+* Change: Upgrade to RJB 1.4.0
+* Fixed:  ArtifactNamespace fails when using artifacts with classfier.
+* Fixed:  Buildr.artifacts() should handle any object with :to_spec method
+          (i.e., any object that ActsAsArtifact)
+* Fixed:  Handle HTTP Unauthorized (501) result code when downloading artifacts.
+* Fixed:  BUILDR-611 Buildr should not unnecessarily recompile Java files
+          explicitly added to compile.from
+* Fixed:  scaladoc generation with scala 2.9.x
+* Fixed:  Bnd Plugin: Add each artifact individually as a prerequisite to
+          bundle / package task when passed to classpath_element method
+* Fixed:  BUILDR-439 "The command line is too long" when running TestNG tests (Tammo Van Lessen)
+* Fixed:  BUILDR-595 Add option to specifiy location of ca cert
+* Fixed:  BUILDR-596 Update installation notes to talk about the all-in-one bundle
+
+1.4.6 (2011-06-21)
+* Added:  BUILDR-592 Allow Users to Specify SSH Options for Deployment (Marc-André Laverdière)
+* Fixed:  BUILDR-591 Sort modules in iml files generated by idea task to ensure
+          main_dependencies are exported
+* Added:  Support for Scala 2.9.0+ (with help of Alexis Midon)
+* Fixed:  BUILDR-583 Update jruby install to use jruby version 1.6.1 (Alexis Midon)
+* Fixed:  BUILDR-582 Revert the name change for the task to generate Intellij
+          project files to 'idea'
+* Change: BUILDR-579 Format generated IDEA project files to look more like what
+          IntelliJ generates (Peter Royal)
+* Change: BUILDR-574 Enhance idea task to generate test resources with test scope
+          (Jean-Philippe Caruana)
+* Change: BUILDR-576 Upgrade to JUnit 4.8.2
+* Change: Upgrade to JRuby 1.6.2
+* Change: Scala 2.9.0-1 is now default, along with ScalaCheck 1.9, ScalaTest 1.6.1
+          and Specs 1.6.8.
+* Change: ScalaCheck, ScalaTest and Specs now default to sane versions when using
+          older Scala versions.
+* Fixed:  BUILDR-571 Generated IDEA projects include resources multiple times (Peter Royal)
+* Fixed:  BUILDR-573 HTTP upload PUT request with incorrect Content-Type (Mathias Doenitz)
+* Fixed:  BUILDR-578 Tar task does not preserve uid/gid on folders (Jean-Philippe Caruana)
+* Fixed:  BUILDR-251 Classifier not handled when downloading snapshot artifacts (Ryan Fowler)
+* Fixed:  BUILDR-585 "TypeError : can't dup NilClass" when merging jars
+* Fixed:  BUILDR-586 ScalaTest uses deprecated ant task (Martin Partel)
+* Fixed:  BUILDR-584 eclipse plugin should use absolute path
+* Fixed:  BUILDR-587 ScalaTest uses deprecated reporter parameters
+
+1.4.5 (2011-02-20)
 * Added:  BUILDR-555 Add support for the jaxb binding compiler (Mark Petrovic)
 * Added:  BUILDR-554 Add support for OSGi bundle packages by importing the
           buildr_bnd plugin
@@ -17,9 +229,12 @@
           project if Groovy/Scala files are detected.
 * Change: BUILDR-540 Upgrade to rspec 2.1.0
 * Change: BUILDR-546 Upgrade to Rubyzip 0.9.4 (Michael Guymon)
+* Change: BUILDR-556 Merge buildr-iidea extension back into buildr.
 * Change: Upgrade default Scala compiler version to 2.8.1-final
 * Change: Upgrade to ScalaCheck 1.8
+* Change: Upgrade to ScalaTest 1.3
 * Change: Upgrade to Specs 1.6.6
+* Change: Upgrade to JRuby 1.5.6
 * Fixed:  BUILDR-542 Release task:  SVN tagging fails if parent tag directory
           does not exist yet (Gerolf Seitz)
 * Fixed:  BUILDR-543 POMs are installed and uploaded twice when using artifacts
@@ -38,6 +253,8 @@
           (Tammo van Lessen)
 * Fixed:  BUILDR-562 WAR package isn't updated if files under src/main/webapp
           are updated
+* Fixed:  BUILDR-569 Buildr fails under JRuby 1.6.0.RC1 due to read-only $? variable
+* Fixed:  BUILDR-570 Buildr does not work with Rubygems 1.5.x
 * Fixed:  Scaladoc task would cause build to exit prematurely
 
 1.4.4 (2010-11-16)

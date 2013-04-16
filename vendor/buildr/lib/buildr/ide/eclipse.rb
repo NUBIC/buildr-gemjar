@@ -13,12 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/core/project'
-require 'buildr/packaging'
-
-
-module Buildr
+module Buildr #:nodoc:
   module Eclipse #:nodoc:
     include Extension
 
@@ -255,16 +250,16 @@ module Buildr
                     classpathentry.src project.test.resources
                   end
 
+                  project.eclipse.classpath_containers.each { |container|
+                    classpathentry.con container
+                  }
+
                   # Classpath elements from other projects
                   classpathentry.src_projects project_libs
 
                   classpathentry.output project.compile.target if project.compile.target
                   classpathentry.lib libs
                   classpathentry.var vars
-
-                  project.eclipse.classpath_containers.each { |container|
-                    classpathentry.con container
-                  }
                 end
               end
             end
@@ -389,9 +384,15 @@ module Buildr
         msg = [:to_path, :to_str, :to_s].find { |msg| path.respond_to? msg }
         path = path.__send__(msg)
         begin
-          Util.relative_path(File.expand_path(path), @project.path_to)
+          relative = Util.relative_path(File.expand_path(path), @project.path_to)
+          if relative['..']
+            # paths don't share same root
+            Util.normalize_path(path)
+          else
+            relative
+          end
         rescue ArgumentError
-          File.expand_path(path)
+          Util.normalize_path(path)
         end
       end
 
@@ -412,16 +413,126 @@ module Buildr
       end
     end
 
+    module Plugin
+      include Extension
+
+      NATURE    = 'org.eclipse.pde.PluginNature'
+      CONTAINER = 'org.eclipse.pde.core.requiredPlugins'
+      BUILDERS   = ['org.eclipse.pde.ManifestBuilder', 'org.eclipse.pde.SchemaBuilder']
+
+      after_define do |project|
+        eclipse = project.eclipse
+
+        # smart defaults
+        if eclipse.natures.empty? && (
+            (File.exists? project.path_to("plugin.xml")) ||
+            (File.exists? project.path_to("OSGI-INF")) ||
+            (File.exists?(project.path_to("META-INF/MANIFEST.MF")) && File.read(project.path_to("META-INF/MANIFEST.MF")).match(/^Bundle-SymbolicName:/)))
+          eclipse.natures = [NATURE, Buildr::Eclipse::Java::NATURE]
+          eclipse.classpath_containers = [CONTAINER, Buildr::Eclipse::Java::CONTAINER] if eclipse.classpath_containers.empty?
+          eclipse.builders = BUILDERS + [Buildr::Eclipse::Java::BUILDER] if eclipse.builders.empty?
+        end
+
+        # :plugin nature explicitly set
+        if eclipse.natures.include? :plugin
+          unless eclipse.natures.include? NATURE
+            # plugin nature must be before java nature
+            eclipse.natures += [Buildr::Eclipse::Java::NATURE] unless eclipse.natures.include? Buildr::Eclipse::Java::NATURE
+            index = eclipse.natures.index(Buildr::Eclipse::Java::NATURE) || -1
+            eclipse.natures = eclipse.natures.insert(index, NATURE)
+          end
+          unless eclipse.classpath_containers.include? CONTAINER
+            # plugin container must be before java container
+            index = eclipse.classpath_containers.index(Buildr::Eclipse::Java::CONTAINER) || -1
+            eclipse.classpath_containers = eclipse.classpath_containers.insert(index, CONTAINER)
+          end
+          unless (eclipse.builders.include?(BUILDERS[0]) && eclipse.builders.include?(BUILDERS[1]))
+            # plugin builder must be before java builder
+            index = eclipse.classpath_containers.index(Buildr::Eclipse::Java::BUILDER) || -1
+            eclipse.builders = eclipse.builders.insert(index, BUILDERS[1]) unless eclipse.builders.include? BUILDERS[1]
+            index = eclipse.classpath_containers.index(BUILDERS[1]) || -1
+            eclipse.builders = eclipse.builders.insert(index, BUILDERS[0]) unless eclipse.builders.include? BUILDERS[0]
+          end
+        end
+      end
+    end
+
+    module Scala
+      include Extension
+
+      NATURE    = 'ch.epfl.lamp.sdt.core.scalanature'
+      CONTAINER = 'ch.epfl.lamp.sdt.launching.SCALA_CONTAINER'
+      BUILDER   = 'ch.epfl.lamp.sdt.core.scalabuilder'
+
+      after_define :eclipse => :eclipse_scala
+      after_define :eclipse_scala do |project|
+        eclipse = project.eclipse
+        # smart defaults
+        if eclipse.natures.empty? && (project.compile.language == :scala || project.test.compile.language == :scala)
+          eclipse.natures = [NATURE, Buildr::Eclipse::Java::NATURE]
+          eclipse.classpath_containers = [CONTAINER, Buildr::Eclipse::Java::CONTAINER] if eclipse.classpath_containers.empty?
+          eclipse.builders = BUILDER if eclipse.builders.empty?
+          eclipse.exclude_libs += Buildr::Scala::Scalac.dependencies
+        end
+
+        # :scala nature explicitly set
+        if eclipse.natures.include? :scala
+          unless eclipse.natures.include? NATURE
+            # scala nature must be before java nature
+            eclipse.natures += [Buildr::Eclipse::Java::NATURE] unless eclipse.natures.include? Buildr::Eclipse::Java::NATURE
+            index = eclipse.natures.index(Buildr::Eclipse::Java::NATURE) || -1
+            eclipse.natures = eclipse.natures.insert(index, NATURE)
+          end
+          unless eclipse.classpath_containers.include? CONTAINER
+            # scala container must be before java container
+            index = eclipse.classpath_containers.index(Buildr::Eclipse::Java::CONTAINER) || -1
+            eclipse.classpath_containers = eclipse.classpath_containers.insert(index, CONTAINER)
+          end
+          unless eclipse.builders.include? BUILDER
+            # scala builder overrides java builder
+            eclipse.builders -= [Buildr::Eclipse::Java::BUILDER]
+            eclipse.builders += [BUILDER]
+          end
+          eclipse.exclude_libs += Buildr::Scala::Scalac.dependencies
+        end
+      end
+    end
+
+    module Java
+      include Extension
+
+      NATURE    = 'org.eclipse.jdt.core.javanature'
+      CONTAINER = 'org.eclipse.jdt.launching.JRE_CONTAINER'
+      BUILDER    = 'org.eclipse.jdt.core.javabuilder'
+
+      after_define do |project|
+        eclipse = project.eclipse
+
+        # smart defaults
+        if project.compile.language == :java || project.test.compile.language == :java
+          eclipse.natures = NATURE if eclipse.natures.empty?
+          eclipse.classpath_containers = CONTAINER if eclipse.classpath_containers.empty?
+          eclipse.builders = BUILDER if eclipse.builders.empty?
+        end
+
+        # :java nature explicitly set
+        if eclipse.natures.include? :java
+          eclipse.natures += [NATURE] unless eclipse.natures.include? NATURE
+          eclipse.classpath_containers += [CONTAINER] unless eclipse.classpath_containers.include? CONTAINER
+          eclipse.builders += [BUILDER] unless eclipse.builders.include? BUILDER
+        end
+      end
+    end
+
   end
 
 end # module Buildr
 
 class Buildr::Project
   include Buildr::Eclipse
+  include Buildr::Eclipse::Plugin
+  include Buildr::Eclipse::Scala
+  include Buildr::Eclipse::Java
 end
 
-# Order is significant for auto-detection, from most specific to least
-require 'buildr/ide/eclipse/plugin'
-require 'buildr/ide/eclipse/scala'
-require 'buildr/ide/eclipse/java'
 

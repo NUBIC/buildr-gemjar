@@ -13,7 +13,6 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
 if RUBY_VERSION >= '1.9.0' # Required to properly load RubyZip under Ruby 1.9
   $LOADED_FEATURES.unshift 'ftools'
   require 'fileutils'
@@ -173,6 +172,12 @@ module Zip #:nodoc:
       io << (@extra ? @extra.to_c_dir_bin : "")
       io << @comment
 
+    end
+  end
+
+  class ZipEntrySet
+    def <<(entry)
+      @entrySet[entry.name.to_s] = entry if entry != nil
     end
   end
 end

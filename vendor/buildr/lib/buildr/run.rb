@@ -13,8 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-module Buildr
+module Buildr #:nodoc:
   module Run
     include Extension
 
@@ -172,8 +171,9 @@ module Buildr
     end
 
     after_define(:run => :test) do |project|
-      project.run.with project.test.compile.dependencies
-      project.run.with project.test.compile.target if project.test.compile.target
+      project.run.with project.compile.dependencies
+      project.run.with project.resources.target if project.resources.target
+      project.run.with project.compile.target if project.compile.target
     end
 
     # :call-seq:

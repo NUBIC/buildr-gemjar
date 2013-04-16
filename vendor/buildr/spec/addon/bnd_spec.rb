@@ -32,6 +32,59 @@ def open_main_manifest_section(file = 'target/foo-2.1.3.jar')
 end
 
 describe Buildr::Bnd do
+  before do
+    repositories.remote << Buildr::Bnd.remote_repository
+  end
+
+  describe "project.bnd version (assure backward compatibility)" do
+
+    after do
+      STDERR.puts("backward compatibility: used #{Buildr::Bnd.version} restoring #{@savedVersion}")
+      Buildr::Bnd.version = @savedVersion
+    end
+
+    before do
+      @savedVersion = Buildr::Bnd.version
+      Buildr::Bnd.version = '0.0.384'
+      write "src/main/java/com/biz/Foo.java", <<SRC
+package com.biz;
+public class Foo {}
+SRC
+      write "bar/src/main/java/com/biz/bar/Bar.java", <<SRC
+package com.biz.bar;
+public class Bar {}
+SRC
+
+        @foo = define "foo" do
+          project.version = "2.1.3"
+          project.group = "mygroup"
+          manifest["Magic-Food"] = "Chocolate"
+          manifest["Magic-Drink"] = "Wine"
+          package(:bundle).tap do |bnd|
+            bnd["Export-Package"] = "com.*"
+          end
+
+          define "bar" do
+            project.version = "2.2"
+            package(:bundle).tap do |bnd|
+              bnd["Magic-Food"] = "Cheese"
+              bnd["Export-Package"] = "com.*"
+            end
+          end
+        end
+        task('package').invoke
+      end
+ 
+      it "version 0.0.384 does not export the version and wrong import-package" do
+        open_main_manifest_section do |attribs|
+          attribs['Bundle-Name'].should eql('foo')
+          attribs['Bundle-Version'].should eql('2.1.3')
+          attribs['Bundle-SymbolicName'].should eql('mygroup.foo')
+          attribs['Export-Package'].should eql('com.biz')
+          attribs['Import-Package'].should eql('com.biz')
+        end
+      end
+  end
 
   describe "package :bundle" do
     describe "with a valid bundle" do
@@ -92,8 +145,8 @@ SRC
           attribs['Bundle-Name'].should eql('foo')
           attribs['Bundle-Version'].should eql('2.1.3')
           attribs['Bundle-SymbolicName'].should eql('mygroup.foo')
-          attribs['Export-Package'].should eql('com.biz')
-          attribs['Import-Package'].should eql('com.biz')
+          attribs['Export-Package'].should eql('com.biz;version="2.1.3"')
+          attribs['Import-Package'].should be_nil
         end
       end
 
@@ -123,8 +176,8 @@ SRC
           attribs['Bundle-Name'].should eql('foo:bar')
           attribs['Bundle-Version'].should eql('2.2')
           attribs['Bundle-SymbolicName'].should eql('mygroup.foo.bar')
-          attribs['Export-Package'].should eql('com.biz.bar')
-          attribs['Import-Package'].should eql('com.biz.bar')
+          attribs['Export-Package'].should eql('com.biz.bar;version="2.2"')
+          attribs['Import-Package'].should be_nil
         end
       end
 
@@ -179,7 +232,7 @@ SRC
       it "should generate package with files exported from dependency" do
         task('package').invoke
         open_main_manifest_section do |attribs|
-          attribs['Export-Package'].should eql('org.apache.tools.zip')
+          attribs['Export-Package'].should eql('org.apache.tools.zip;version="2.1.3"')
         end
       end
     end
@@ -211,7 +264,7 @@ SRC
       it "should generate package with files exported from dependency" do
         task('package').invoke
         open_main_manifest_section do |attribs|
-          attribs['Export-Package'].should eql('org.apache.tools.zip')
+          attribs['Export-Package'].should eql('org.apache.tools.zip;version="2.1.3"')
         end
       end
     end
@@ -235,7 +288,7 @@ SRC
       it "should generate package with files exported from dependency" do
         task('package').invoke
         open_main_manifest_section do |attribs|
-          attribs['Export-Package'].should eql('org.apache.tools.zip')
+          attribs['Export-Package'].should eql('org.apache.tools.zip;version="2.1.3"')
         end
       end
     end
@@ -273,14 +326,14 @@ SRC
 
     it "defaults -classpath to compile path and dependencies" do
       @foo.packages[0].to_params['-classpath'].should include(@foo.compile.target.to_s)
-      @foo.packages[0].to_params['-classpath'].should include(Buildr.artifacts(Buildr::Ant.dependencies[0]).to_s)
+      @foo.packages[0].to_params['-classpath'].should include(Buildr.artifact(Buildr::Ant.dependencies[0]).to_s)
       @bar.packages[0].to_params['-classpath'].should include(@bar.compile.target.to_s)
     end
 
     it "classpath method returns compile path and dependencies" do
       @foo.packages[0].classpath.should include(@foo.compile.target)
       Buildr::Ant.dependencies.each do |dependency|
-        @foo.packages[0].classpath.to_s.should include(Buildr.artifacts(dependency).to_s)
+        @foo.packages[0].classpath.to_s.should include(Buildr.artifact(dependency).to_s)
       end
       @bar.packages[0].classpath.should include(@bar.compile.target)
     end
@@ -327,4 +380,5 @@ SRC
       Rake::Task.tasks.detect { |task| task.to_s == "bnd:print" }.comment.should_not be_nil
     end
   end
+
 end

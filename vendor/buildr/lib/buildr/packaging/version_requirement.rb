@@ -30,7 +30,7 @@ unless Gem::Version.new(0).respond_to?(:version=)
   end
 end
 
-module Buildr
+module Buildr #:nodoc:
 
   #
   # See ArtifactNamespace#need
@@ -49,7 +49,7 @@ module Buildr
     class << self
       # is +str+ a version string?
       def version?(str)
-        /^\s*\d[#{VER_CHARS}]*\s*$/ === str
+        /^\s*r?\d[#{VER_CHARS}]*\s*$/ === str
       end
 
       # is +str+ a version requirement?

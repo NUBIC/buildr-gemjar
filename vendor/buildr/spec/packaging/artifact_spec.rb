@@ -18,6 +18,9 @@ require 'fileutils'
 
 describe Artifact do
   before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
     @spec = { :group=>'com.example', :id=>'library', :type=>:jar, :version=>'2.0' }
     @artifact = artifact(@spec)
     @classified = artifact(@spec.merge(:classifier=>'all'))
@@ -96,20 +99,20 @@ describe Artifact do
   end
 
   it 'should handle lack of POM gracefully' do
-    repositories.remote = 'http://example.com'
-    URI.should_receive(:download).twice { |uri, target, options| raise URI::NotFoundError if uri.to_s.ends_with('.pom') }
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
+    URI.should_receive(:download).twice { |*args| raise URI::NotFoundError if args[0].to_s.end_with?('.pom') }
     lambda { @artifact.invoke }.should_not raise_error
   end
 
   it 'should pass if POM provided' do
-    repositories.remote = 'http://example.com'
-    @artifact.pom.enhance { |task| write task.name, @artifact.pom_xml }
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
+    @artifact.pom.enhance { |task| write task.name, @artifact.pom_xml.call }
     write repositories.locate(@artifact)
     lambda { @artifact.invoke }.should_not raise_error
   end
 
   it 'should pass if POM not required' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     class << @artifact ; def pom() ; end ; end
     write repositories.locate(@artifact)
     lambda { @artifact.invoke }.should_not raise_error
@@ -145,6 +148,12 @@ end
 
 
 describe Repositories, 'local' do
+  before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
+  end
+
   it 'should default to .m2 path' do
     # For convenience, sandbox actually sets the local repository to a temp directory
     repositories.local = nil
@@ -203,6 +212,10 @@ end
 
 describe Repositories, 'remote' do
   before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
+
     @repos = [ 'http://www.ibiblio.org/maven2', 'http://repo1.maven.org/maven2' ]
   end
 
@@ -226,14 +239,14 @@ describe Repositories, 'remote' do
   end
 
   it 'should be used to download artifact' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).twice.and_return { |uri, target, options| write target }
     lambda { artifact('com.example:library:jar:2.0').invoke }.
       should change { File.exist?(File.join(repositories.local, 'com/example/library/2.0/library-2.0.jar')) }.to(true)
   end
 
   it 'should lookup in array order' do
-    repositories.remote = [ 'http://example.com', 'http://example.org' ]
+    repositories.remote = [ 'http://buildr.apache.org/repository/noexist', 'http://example.org' ]
     order = ['com', 'org']
     URI.should_receive(:download).any_number_of_times do |uri, target, options|
       order.shift if order.first && uri.to_s[order.first]
@@ -244,33 +257,33 @@ describe Repositories, 'remote' do
   end
 
   it 'should fail if artifact not found' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).once.ordered.and_return { fail URI::NotFoundError }
     lambda { artifact('com.example:library:jar:2.0').invoke }.should raise_error(RuntimeError, /Failed to download/)
     File.exist?(File.join(repositories.local, 'com/example/library/2.0/library-2.0.jar')).should be_false
   end
 
   it 'should support artifact classifier' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).once.and_return { |uri, target, options| write target }
     lambda { artifact('com.example:library:jar:all:2.0').invoke }.
       should change { File.exist?(File.join(repositories.local, 'com/example/library/2.0/library-2.0-all.jar')) }.to(true)
   end
 
   it 'should deal well with repositories URL that lack the last slash' do
-    repositories.remote = 'http://example.com/base'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist/base'
     uri = nil
     URI.should_receive(:download).twice.and_return { |_uri, args| uri = _uri }
     artifact('group:id:jar:1.0').invoke
-    uri.to_s.should eql('http://example.com/base/group/id/1.0/id-1.0.pom')
+    uri.to_s.should eql('http://buildr.apache.org/repository/noexist/base/group/id/1.0/id-1.0.pom')
   end
 
   it 'should deal well with repositories URL that have the last slash' do
-    repositories.remote = 'http://example.com/base/'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist/base/'
     uri = nil
     URI.should_receive(:download).twice.and_return { |_uri, args| uri = _uri }
     artifact('group:id:jar:1.0').invoke
-    uri.to_s.should eql('http://example.com/base/group/id/1.0/id-1.0.pom')
+    uri.to_s.should eql('http://buildr.apache.org/repository/noexist/base/group/id/1.0/id-1.0.pom')
   end
 
   it 'should resolve m2-style deployed snapshots' do
@@ -289,7 +302,7 @@ describe Repositories, 'remote' do
       </versioning>
     </metadata>
     XML
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).twice.with(uri(/2.1-SNAPSHOT\/library-2.1-SNAPSHOT.(jar|pom)$/), anything()).
       and_return { fail URI::NotFoundError }
     URI.should_receive(:download).twice.with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
@@ -298,6 +311,32 @@ describe Repositories, 'remote' do
       and_return { |uri, target, options| write target }
     lambda { artifact('com.example:library:jar:2.1-SNAPSHOT').invoke }.
       should change { File.exist?(File.join(repositories.local, 'com/example/library/2.1-SNAPSHOT/library-2.1-SNAPSHOT.jar')) }.to(true)
+  end
+
+  it 'should resolve m2-style deployed snapshots with classifiers' do
+    metadata = <<-XML
+    <?xml version='1.0' encoding='UTF-8'?>
+    <metadata>
+      <groupId>com.example</groupId>
+      <artifactId>library</artifactId>
+      <version>2.1-SNAPSHOT</version>
+      <versioning>
+        <snapshot>
+          <timestamp>20071012.190008</timestamp>
+          <buildNumber>8</buildNumber>
+        </snapshot>
+        <lastUpdated>20071012190008</lastUpdated>
+      </versioning>
+    </metadata>
+    XML
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
+    URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/library-2.1-20071012.190008-8-classifier.jar$/), anything()).
+      and_return { |uri, target, options| write target }
+    URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
+      and_return { |uri, target, options| target.write(metadata) }
+    puts repositories.local
+    lambda { artifact('com.example:library:jar:classifier:2.1-SNAPSHOT').invoke}.
+      should change {File.exists?(File.join(repositories.local, 'com/example/library/2.1-SNAPSHOT/library-2.1-SNAPSHOT-classifier.jar')) }.to(true)
   end
 
   it 'should fail resolving m2-style deployed snapshots if a timestamp is missing' do
@@ -315,7 +354,7 @@ describe Repositories, 'remote' do
       </versioning>
     </metadata>
     XML
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/library-2.1-SNAPSHOT.(jar|pom)$/), anything()).
       and_return { fail URI::NotFoundError }
     URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
@@ -341,7 +380,7 @@ describe Repositories, 'remote' do
       </versioning>
     </metadata>
     XML
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/library-2.1-SNAPSHOT.(jar|pom)$/), anything()).
       and_return { fail URI::NotFoundError }
     URI.should_receive(:download).once.with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
@@ -353,7 +392,7 @@ describe Repositories, 'remote' do
   end
 
   it 'should handle missing maven metadata by reporting the artifact unavailable' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).with(uri(/2.1-SNAPSHOT\/library-2.1-SNAPSHOT.jar$/), anything()).
       and_return { fail URI::NotFoundError }
     URI.should_receive(:download).with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
@@ -378,7 +417,7 @@ describe Repositories, 'remote' do
       </versioning>
     </metadata>
     XML
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).with(uri(/2.1-SNAPSHOT\/library-2.1-SNAPSHOT.jar$/), anything()).
       and_return { fail URI::NotFoundError }
     URI.should_receive(:download).with(uri(/2.1-SNAPSHOT\/maven-metadata.xml$/), duck_type(:write)).
@@ -393,81 +432,81 @@ describe Repositories, 'remote' do
     write 'home/.buildr/settings.yaml', <<-YAML
     repositories:
       remote:
-      - http://example.com
+      - http://buildr.apache.org/repository/noexist
       - http://example.org
     YAML
-    repositories.remote.should include('http://example.com', 'http://example.org')
+    repositories.remote.should include('http://buildr.apache.org/repository/noexist', 'http://example.org')
   end
 
   it 'should load with all repositories specified in build.yaml file' do
     write 'build.yaml', <<-YAML
     repositories:
       remote:
-      - http://example.com
+      - http://buildr.apache.org/repository/noexist
       - http://example.org
     YAML
-    repositories.remote.should include('http://example.com', 'http://example.org')
+    repositories.remote.should include('http://buildr.apache.org/repository/noexist', 'http://example.org')
   end
 
   it 'should load with all repositories specified in settings and build.yaml files' do
     write 'home/.buildr/settings.yaml', <<-YAML
     repositories:
       remote:
-      - http://example.com
+      - http://buildr.apache.org/repository/noexist
     YAML
     write 'build.yaml', <<-YAML
     repositories:
       remote:
       - http://example.org
     YAML
-    repositories.remote.should include('http://example.com', 'http://example.org')
+    repositories.remote.should include('http://buildr.apache.org/repository/noexist', 'http://example.org')
   end
 end
 
 
 describe Repositories, 'release_to' do
   it 'should accept URL as first argument' do
-    repositories.release_to = 'http://example.com'
-    repositories.release_to.should == { :url=>'http://example.com' }
+    repositories.release_to = 'http://buildr.apache.org/repository/noexist'
+    repositories.release_to.should == { :url=>'http://buildr.apache.org/repository/noexist' }
   end
 
   it 'should accept hash with options' do
-    repositories.release_to = { :url=>'http://example.com', :username=>'john' }
-    repositories.release_to.should == { :url=>'http://example.com', :username=>'john' }
+    repositories.release_to = { :url=>'http://buildr.apache.org/repository/noexist', :username=>'john' }
+    repositories.release_to.should == { :url=>'http://buildr.apache.org/repository/noexist', :username=>'john' }
   end
 
   it 'should allow the hash to be manipulated' do
-    repositories.release_to = 'http://example.com'
-    repositories.release_to.should == { :url=>'http://example.com' }
+    repositories.release_to = 'http://buildr.apache.org/repository/noexist'
+    repositories.release_to.should == { :url=>'http://buildr.apache.org/repository/noexist' }
     repositories.release_to[:username] = 'john'
-    repositories.release_to.should == { :url=>'http://example.com', :username=>'john' }
+    repositories.release_to.should == { :url=>'http://buildr.apache.org/repository/noexist', :username=>'john' }
   end
 
   it 'should load URL from settings file' do
     write 'home/.buildr/settings.yaml', <<-YAML
     repositories:
-      release_to: http://john:secret@example.com
+      release_to: http://john:secret@buildr.apache.org/repository/noexist
     YAML
-    repositories.release_to.should == { :url=>'http://john:secret@example.com' }
+    repositories.release_to.should == { :url=>'http://john:secret@buildr.apache.org/repository/noexist' }
   end
 
   it 'should load URL from build settings file' do
     write 'build.yaml', <<-YAML
     repositories:
-      release_to: http://john:secret@example.com
+      release_to: http://john:secret@buildr.apache.org/repository/noexist
     YAML
-    repositories.release_to.should == { :url=>'http://john:secret@example.com' }
+    repositories.release_to.should == { :url=>'http://john:secret@buildr.apache.org/repository/noexist' }
   end
 
   it 'should load URL, username and password from settings file' do
     write 'home/.buildr/settings.yaml', <<-YAML
     repositories:
       release_to:
-        url: http://example.com
+        url: http://buildr.apache.org/repository/noexist
         username: john
         password: secret
     YAML
-    repositories.release_to.should == { :url=>'http://example.com', :username=>'john', :password=>'secret' }
+    repositories.release_to.should == { :url=>'http://buildr.apache.org/repository/noexist', :username=>'john', :password=>'secret' }
   end
 end
 
@@ -613,7 +652,7 @@ describe Buildr, '#artifact' do
   end
 
   def run_with_repo
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
   end
 
 end
@@ -649,6 +688,14 @@ describe Buildr, '#artifacts' do
 
   it 'should accept filenames and return filenames' do
     artifacts('c:test').first.should be_kind_of(String)
+  end
+
+  it 'should accept any object responding to :to_spec' do
+    obj = Object.new
+    class << obj
+      def to_spec; "org.example:artifact:jar:1.1"; end
+    end
+    artifacts(obj).size.should be(1)
   end
 
   it 'should accept project and return all its packaging tasks' do
@@ -741,7 +788,7 @@ describe Buildr, '#install' do
   end
 
   it 'should download snapshot to temporary location' do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     snapshot = artifact(@snapshot_spec)
     same_time = Time.new
     download_file = "#{Dir.tmpdir}/#{File.basename(snapshot.name)}#{same_time.to_i}"
@@ -784,7 +831,7 @@ describe Buildr, '#upload' do
   before do
     @spec = 'group:id:jar:1.0'
     write @file = 'test.jar'
-    repositories.release_to = 'sftp://example.com/base'
+    repositories.release_to = 'sftp://buildr.apache.org/repository/noexist/base'
   end
 
   it 'should return the upload task' do
@@ -800,9 +847,9 @@ describe Buildr, '#upload' do
     write @file
     upload artifact(@spec).from(@file)
     URI.should_receive(:upload).once.
-      with(URI.parse('sftp://example.com/base/group/id/1.0/id-1.0.jar'), artifact(@spec).to_s, anything)
+      with(URI.parse('sftp://buildr.apache.org/repository/noexist/base/group/id/1.0/id-1.0.jar'), artifact(@spec).to_s, anything)
     URI.should_receive(:upload).once.
-      with(URI.parse('sftp://example.com/base/group/id/1.0/id-1.0.pom'), artifact(@spec).pom.to_s, anything)
+      with(URI.parse('sftp://buildr.apache.org/repository/noexist/base/group/id/1.0/id-1.0.pom'), artifact(@spec).pom.to_s, anything)
     upload.invoke
   end
 end
@@ -815,10 +862,10 @@ describe ActsAsArtifact, '#upload' do
     write repositories.locate(artifact)
     write repositories.locate(artifact.pom)
     URI.should_receive(:upload).once.
-      with(URI.parse('sftp://example.com/base/com/example/library/2.0/library-2.0.pom'), artifact.pom.to_s, anything)
+      with(URI.parse('sftp://buildr.apache.org/repository/noexist/base/com/example/library/2.0/library-2.0.pom'), artifact.pom.to_s, anything)
     URI.should_receive(:upload).once.
-      with(URI.parse('sftp://example.com/base/com/example/library/2.0/library-2.0.jar'), artifact.to_s, anything)
-    verbose(false) { artifact.upload(:url=>'sftp://example.com/base') }
+      with(URI.parse('sftp://buildr.apache.org/repository/noexist/base/com/example/library/2.0/library-2.0.jar'), artifact.to_s, anything)
+    verbose(false) { artifact.upload(:url=>'sftp://buildr.apache.org/repository/noexist/base') }
   end
 
   it 'should support artifact classifier and should not upload pom if artifact has classifier' do
@@ -826,8 +873,8 @@ describe ActsAsArtifact, '#upload' do
     # Prevent artifact from downloading anything.
     write repositories.locate(artifact)
     URI.should_receive(:upload).exactly(:once).
-      with(URI.parse('sftp://example.com/base/com/example/library/2.0/library-2.0-all.jar'), artifact.to_s, anything)
-    verbose(false) { artifact.upload(:url=>'sftp://example.com/base') }
+      with(URI.parse('sftp://buildr.apache.org/repository/noexist/base/com/example/library/2.0/library-2.0-all.jar'), artifact.to_s, anything)
+    verbose(false) { artifact.upload(:url=>'sftp://buildr.apache.org/repository/noexist/base') }
   end
 
   it 'should complain without any repository configuration' do
@@ -844,7 +891,7 @@ describe ActsAsArtifact, '#upload' do
     write repositories.locate(artifact)
     write repositories.locate(artifact.pom)
     URI.should_receive(:upload).at_least(:once)
-    repositories.release_to = 'sftp://example.com/base'
+    repositories.release_to = 'sftp://buildr.apache.org/repository/noexist/base'
     artifact.upload
     lambda { artifact.upload }.should_not raise_error
   end
@@ -853,9 +900,15 @@ end
 
 
 describe Rake::Task, ' artifacts' do
+  before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
+  end
+
   it 'should download all specified artifacts' do
     artifact 'group:id:jar:1.0'
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     URI.should_receive(:download).twice.and_return { |uri, target, options| write target }
     task('artifacts').invoke
   end
@@ -877,8 +930,11 @@ end
 describe Rake::Task, ' artifacts:sources' do
 
   before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
     task('artifacts:sources').clear
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
   end
 
   it 'should download sources for all specified artifacts' do
@@ -913,8 +969,11 @@ end
 describe Rake::Task, ' artifacts:javadoc' do
 
   before do
+    Buildr.repositories.instance_eval do
+      @local = @remote = @release_to = nil
+    end
     task('artifacts:javadoc').clear
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
   end
 
   it 'should download javadoc for all specified artifacts' do
@@ -948,9 +1007,9 @@ end
 
 describe Buildr, '#transitive' do
   before do
-    repositories.remote = 'http://example.com'
+    repositories.remote = 'http://buildr.apache.org/repository/noexist'
     @simple = [ 'saxon:saxon:jar:8.4', 'saxon:saxon-dom:jar:8.4', 'saxon:saxon-xpath:jar:8.4' ]
-    @simple.map { |spec| artifact(spec).pom }.each { |task| write task.name, task.pom_xml }
+    @simple.map { |spec| artifact(spec).pom }.each { |task| write task.name, task.pom_xml.call }
     @provided = @simple.first
     @complex = 'group:app:jar:1.0'
     write artifact(@complex).pom.to_s, <<-XML
@@ -980,6 +1039,13 @@ describe Buildr, '#transitive' do
       <groupId>saxon</groupId>
       <version>8.4</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <artifactId>jlib-optional</artifactId>
+      <groupId>jlib</groupId>
+      <version>1.4</version>
+      <scope>runtime</scope>
+      <optional>true</optional>
     </dependency>
   </dependencies>
 </project>
@@ -1049,15 +1115,25 @@ XML
   end
 
   it 'should bring artifact and its dependencies' do
-    transitive(@complex).should eql(artifacts(@complex, @simple))
+    transitive(@complex).should eql(artifacts(@complex, @simple - [@provided]))
   end
 
   it 'should bring dependencies of POM without artifact itself' do
-    transitive(@complex.sub(/jar/, 'pom')).should eql(artifacts(@simple))
+    transitive(@complex.sub(/jar/, 'pom')).should eql(artifacts(@simple - [@provided]))
   end
 
   it 'should bring artifact and transitive depenencies' do
     transitive(@transitive).should eql(artifacts(@transitive, @complex, @simple - [@provided]))
+  end
+
+  it 'should filter dependencies based on :scopes argument' do
+    specs = [@complex, 'saxon:saxon-dom:jar:8.4']
+    transitive(@complex, :scopes => [:runtime]).should eql(specs.map { |spec| artifact(spec) })
+  end
+
+  it 'should filter dependencies based on :optional argument' do
+    specs = [@complex, 'saxon:saxon-dom:jar:8.4', 'jlib:jlib-optional:jar:1.4']
+    transitive(@complex, :scopes => [:runtime], :optional => true).should eql(specs.map { |spec| artifact(spec) })
   end
 end
 

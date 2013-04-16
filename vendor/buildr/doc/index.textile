@@ -46,14 +46,26 @@ So let's get started.  You can "read the documentation online":quick_start.html,
 
 h2(#news).  What's New
 
-New in Buildr 1.4.4 (Nov. 16th, 2010)
+Highlights from Buildr 1.4.11 (2013-03-14)
 
-* Change: BUILDR-549 Upgrade to RJB 1.3.3 to address "Cannot create JVM" issue
-with Java Update 3 on Mac OS X.  Win32 platform upgraded to RJB 1.3.2.
-* Change: RSpec gem dependency ~> 1.3.1
-* Change: Upgrade to JtestR 0.6
+* Fixed:  Multiple tests in TestNG 6.x versions were being incorrectly passed to the command line application.
 
-See the "CHANGELOG":CHANGELOG for full details.
+
+Highlights from Buildr 1.4.10 (2013-02-10)
+
+* Added:  Support a single intermediate directory for each project hierarchy through an addon 'buildr/single_intermediate_layout'.
+* Fixed:  Scala 2.10 support - compiler now uses additional/separate jars introduced in 2.10 such as scala-reflect.jar and scala-actor.jar
+* Added:  Add an addon for NSIS.
+* Change: BUILDR-612 - Support the TestNG 6.x versions and default to 6.8.
+* Added:  BUILDR-599 - Support the passing of arguments to testng test runner.
+* Fixed:  Observer the per-project source version when generating IDEA module files.
+* Change: Sort the components in IDEA project files in the same order the idea sorts them.
+* Added:  Created an addon 'buildr/wsgen' for generating wsdls from java and java from wsdls using the underlying wsgen tool.
+* Added:  Create a 'buildr/gpg' addon that signs and uploads signatures when uploading artifacts. Inspired by a similar extension in the Apache ODE project by Tammo van Lessen.
+* Change: Require 'bundler/setup' as part of buildr startup to ensure that buildr always runs with up to date dependencies if a Gemfile is present.
+* Added:  Create a simple extension that modifies the project layout to place generated files at the top level.
+
+This is a partial list -- see the "CHANGELOG":CHANGELOG for full details.
 
 h2(#notices).  Credits & Notices
 

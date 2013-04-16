@@ -1,3 +1,4 @@
+
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with this
 # work for additional information regarding copyright ownership.  The ASF
@@ -13,13 +14,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/core/build'
-require 'buildr/core/compile'
-require 'buildr/java/ant'
-
-
-module Buildr
+module Buildr #:nodoc:
 
   class TestFramework::Java < TestFramework::Base
 
@@ -184,7 +179,7 @@ module Buildr
     end
 
     # JUnit version number.
-    VERSION = '4.7'
+    VERSION = '4.8.2'
 
     class << self
       # :call-seq:
@@ -227,7 +222,7 @@ module Buildr
                        :class_annotations => %w{org.junit.runner.RunWith},
                        :method_annotations => %w{org.junit.Test})
       end
-      
+
     end
 
     def run(tests, dependencies) #:nodoc:
@@ -298,9 +293,10 @@ module Buildr
   # Support the following options:
   # * :properties -- Hash of properties passed to the test suite.
   # * :java_args -- Arguments passed to the JVM.
+  # * :args -- Arguments passed to the TestNG command line runner.
   class TestNG < TestFramework::Java
 
-    VERSION = '5.10'
+    VERSION = '6.8'
 
     class << self
       def version
@@ -308,7 +304,8 @@ module Buildr
       end
 
       def dependencies
-        ["org.testng:testng:jar:jdk15:#{version}"]+ JMock.dependencies
+        return ["org.testng:testng:jar:jdk15:#{version}"] + JMock.dependencies if version < "6.0"
+        ["org.testng:testng:jar:#{version}",'com.beust:jcommander:jar:1.27'] + JMock.dependencies
       end
 
     private
@@ -326,14 +323,27 @@ module Buildr
     end
 
     def run(tests, dependencies) #:nodoc:
-      cmd_args = ['-log', '2', '-sourcedir', task.compile.sources.join(';'), '-suitename', task.project.id ]
+      cmd_args = []
+      cmd_args << '-suitename' << task.project.id
+      cmd_args << '-sourcedir' << task.compile.sources.join(';') if TestNG.version < "6.0"
+      cmd_args << '-log' << '2'
       cmd_args << '-d' << task.report_to.to_s
+      exclude_args = options[:excludegroups] || []
+      if !exclude_args.empty?
+        cmd_args << '-excludegroups' << exclude_args.join(",")
+      end
+      groups_args = options[:groups] || []
+      if !groups_args.empty?
+        cmd_args << '-groups' << groups_args.join(",")
+      end
       # run all tests in the same suite
-      cmd_args << '-testclass' << tests
-      
+      cmd_args << '-testclass' << (TestNG.version < "6.0" ? test : tests.join(','))
+
+      cmd_args += options[:args] if options[:args]
+
       cmd_options = { :properties=>options[:properties], :java_args=>options[:java_args],
         :classpath=>dependencies, :name => "TestNG in #{task.send(:project).name}" }
-      
+
       tmp = nil
       begin
         tmp = Tempfile.open("testNG")
@@ -355,8 +365,67 @@ module Buildr
 
   end
 
+  # A composite test framework that runs multiple other test frameworks.
+  #
+  # e.g.,
+  #        test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ], :options = {
+  #          :junit => { :fork => true },
+  #          :testng => { ... }
+  #        }
+  #
+  class MultiTest < Buildr::TestFramework::Java
+    # TODO: Support multiple test report locations, one per framework
+
+    class << self
+      def applies_to?(project)  #:nodoc:
+        false # no auto-detection, should be set explicitly
+      end
+    end
+
+    attr_accessor :frameworks
+
+    def initialize(task, options) #:nodoc:
+      super
+      fail "Missing :frameworks option" unless options[:frameworks]
+      @frameworks = options[:frameworks].map do |f|
+        framework_options = (options[:options] || {})[f.to_sym] || {}
+        f.new(task, options)
+      end
+    end
+
+    def dependencies #:nodoc:
+      unless @dependencies
+        @dependencies = TestFramework::Java.dependencies
+        @dependencies += @frameworks.map { |f| f.dependencies }.flatten
+      end
+      @dependencies
+    end
+
+
+    def tests(dependencies)
+      @frameworks.map { |f| f.tests(dependencies) }.flatten
+    end
+
+    def run(tests, dependencies)  #:nodoc:
+      framework_for_test = @frameworks.inject({}) do |hash, f|
+        f.tests(dependencies).each { |t| hash[t] = f }
+        hash
+      end
+
+      tests_by_framework = tests.group_by { |t| framework_for_test[t] }
+
+      passed = []
+      tests_by_framework.each do |f, tests|
+        passed += f.run(tests, dependencies)
+      end
+      passed
+    end
+  end # MultiTest
+
 end # Buildr
 
 
 Buildr::TestFramework << Buildr::JUnit
 Buildr::TestFramework << Buildr::TestNG
+Buildr::TestFramework << Buildr::MultiTest
+

@@ -20,7 +20,7 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', 'xpath_matchers
 describe Buildr::IntellijIdea do
 
   def invoke_generate_task
-    task('idea:generate').invoke
+    task('idea').invoke
   end
 
   def invoke_clean_task
@@ -97,7 +97,7 @@ describe Buildr::IntellijIdea do
     end
   end
 
-  describe "idea:generate" do
+  describe "idea task" do
 
     def order_entry_xpath
       "/module/component[@name='NewModuleRootManager']/orderEntry"
@@ -141,9 +141,9 @@ describe Buildr::IntellijIdea do
           invoke_generate_task
         end
 
-        it "generates one non-exported 'module-library' orderEntry in IML" do
+        it "generates one non-exported  test scope 'module-library' orderEntry in IML" do
           root_module_xml(@foo).should have_nodes("#{order_entry_xpath}[@type='module-library' and @exported]/library/CLASSES/root", 0)
-          root_module_xml(@foo).should have_nodes("#{order_entry_xpath}[@type='module-library']/library/CLASSES/root", 1)
+          root_module_xml(@foo).should have_nodes("#{order_entry_xpath}[@type='module-library' and @scope='TEST']/library/CLASSES/root", 1)
         end
       end
 
@@ -179,6 +179,9 @@ describe Buildr::IntellijIdea do
 
       describe "with local_repository_env_override set to nil" do
         before do
+          Buildr.repositories.instance_eval do
+            @local = @remote = @release_to = nil
+          end
           artifact('group:id:jar:1.0') { |t| write t.to_s }
           @foo = define "foo" do
             iml.local_repository_env_override = nil
@@ -290,6 +293,66 @@ describe Buildr::IntellijIdea do
         doc.should have_nodes(facet_xpath, 2)
         doc.should have_xpath("#{facet_xpath}[@type='web', @name='Web']")
         doc.should have_xpath("#{facet_xpath}[@type='WebServicesClient', @name='WebServices Client']")
+      end
+    end
+
+    describe "with artifacts added to root project" do
+      before do
+        @foo = define "foo" do
+          ipr.add_artifact("MyFancy.jar", "jar") do |xml|
+            xml.tag!('output-path', project._(:artifacts, "MyFancy.jar"))
+            xml.element :id => "module-output", :name => "foo"
+          end
+          ipr.add_artifact("MyOtherFancy.jar", "jar") do |xml|
+            xml.tag!('output-path', project._(:artifacts, "MyOtherFancy.jar"))
+            xml.element :id => "module-output", :name => "foo"
+          end
+        end
+        invoke_generate_task
+      end
+
+      it "generates an IPR with multiple jar artifacts" do
+        doc = xml_document(@foo._("foo.ipr"))
+        facet_xpath = "/project/component[@name='ArtifactManager']/artifact"
+        doc.should have_nodes(facet_xpath, 2)
+        doc.should have_xpath("#{facet_xpath}[@type='jar', @name='MyFancy.jar']")
+        doc.should have_xpath("#{facet_xpath}[@type='jar', @name='MyOtherFancy.jar']")
+      end
+    end
+
+    describe "with configurations added to root project" do
+      before do
+        @foo = define "foo" do
+          ipr.add_configuration("Run Contacts.html", "GWT.ConfigurationType", "GWT Configuration") do |xml|
+            xml.module(:name => project.iml.id)
+            xml.option(:name => "RUN_PAGE", :value => "Contacts.html")
+            xml.option(:name => "compilerParameters", :value => "-draftCompile -localWorkers 2")
+            xml.option(:name => "compilerMaxHeapSize", :value => "512")
+
+            xml.RunnerSettings(:RunnerId => "Run")
+            xml.ConfigurationWrapper(:RunnerId => "Run")
+            xml.tag! :method
+          end
+          ipr.add_configuration("Run Planner.html", "GWT.ConfigurationType", "GWT Configuration") do |xml|
+            xml.module(:name => project.iml.id)
+            xml.option(:name => "RUN_PAGE", :value => "Planner.html")
+            xml.option(:name => "compilerParameters", :value => "-draftCompile -localWorkers 2")
+            xml.option(:name => "compilerMaxHeapSize", :value => "512")
+
+            xml.RunnerSettings(:RunnerId => "Run")
+            xml.ConfigurationWrapper(:RunnerId => "Run")
+            xml.tag! :method
+          end
+        end
+        invoke_generate_task
+      end
+
+      it "generates an IPR with multiple configurations" do
+        doc = xml_document(@foo._("foo.ipr"))
+        facet_xpath = "/project/component[@name='ProjectRunConfigurationManager']/configuration"
+        doc.should have_nodes(facet_xpath, 2)
+        doc.should have_xpath("#{facet_xpath}[@type='GWT.ConfigurationType', @name='Run Contacts.html']")
+        doc.should have_xpath("#{facet_xpath}[@type='GWT.ConfigurationType', @name='Run Planner.html']")
       end
     end
 
@@ -548,7 +611,7 @@ describe Buildr::IntellijIdea do
       end
 
       it "depends on the associated module exactly once" do
-        @bar_iml.should have_nodes("//orderEntry[@type='module', @module-name='foo']", 1)
+        @bar_iml.should have_nodes("//orderEntry[@type='module', @module-name='foo', @exported=""]", 1)
       end
 
       it "does not depend on the other project's packaged JAR" do
@@ -559,9 +622,9 @@ describe Buildr::IntellijIdea do
         @bar_lib_urls.grep(%r{foo/target/classes}).should == []
       end
 
-      it "depends on the the other project's target/resources directory" do
-        @bar_lib_urls.grep(%r{file://\$MODULE_DIR\$/../foo/target/resources}).size.should == 1
-      end
+      it "does not depend on the the other project's target/resources directory" do
+        @bar_lib_urls.grep(%r{file://\$MODULE_DIR\$/../foo/target/resources}).size.should == 0
+       end
     end
 
     describe "with a single project definition" do
@@ -1019,40 +1082,41 @@ PROJECT_XML
     end
 
     describe "with local_repository_env_override = nil" do
-      describe "base_directory on different drive on windows" do
-        before do
-          @foo = define "foo", :base_dir => "C:/bar" do
-            iml.local_repository_env_override = nil
+      if Buildr::Util.win_os?
+        describe "base_directory on different drive on windows" do
+          before do
+            @foo = define "foo", :base_dir => "C:/bar" do
+              iml.local_repository_env_override = nil
+            end
+          end
+
+          it "generates relative paths correctly" do
+            @foo.iml.send(:resolve_path, "E:/foo").should eql('E:/foo')
           end
         end
 
-        it "generates relative paths correctly" do
-          @foo.iml.send(:resolve_path, "E:/foo").should eql('E:/foo')
-        end
-      end
+        describe "base_directory on same drive on windows" do
+          before do
+            @foo = define "foo", :base_dir => "C:/bar" do
+              iml.local_repository_env_override = nil
+            end
+          end
 
-      describe "base_directory on same drive on windows" do
-        before do
-          @foo = define "foo", :base_dir => "C:/bar" do
-            iml.local_repository_env_override = nil
+          it "generates relative paths correctly" do
+            @foo.iml.send(:resolve_path, "C:/foo").should eql('$MODULE_DIR$/../foo')
           end
         end
-
-        it "generates relative paths correctly" do
-          @foo.iml.send(:resolve_path, "C:/foo").should eql('$MODULE_DIR$/../foo')
-        end
       end
-
     end
   end
 
   describe "project extension" do
-    it "provides an 'idea:generate' task" do
-      Rake::Task.tasks.detect { |task| task.to_s == "idea:generate" }.should_not be_nil
+    it "provides an 'idea' task" do
+      Rake::Task.tasks.detect { |task| task.to_s == "idea" }.should_not be_nil
     end
 
-    it "documents the 'idea:generate' task" do
-      Rake::Task.tasks.detect { |task| task.to_s == "idea:generate" }.comment.should_not be_nil
+    it "documents the 'idea' task" do
+      Rake::Task.tasks.detect { |task| task.to_s == "idea" }.comment.should_not be_nil
     end
 
     it "provides an 'idea:clean' task" do
@@ -1061,18 +1125,6 @@ PROJECT_XML
 
     it "documents the 'idea:clean' task" do
       Rake::Task.tasks.detect { |task| task.to_s == "idea:clean" }.comment.should_not be_nil
-    end
-
-    it "removes the 'idea' task" do
-      Rake::Task.tasks.detect { |task| task.to_s == "idea" }.should be_nil
-    end
-
-    it "removes the 'idea7x' task" do
-      Rake::Task.tasks.detect { |task| task.to_s == "idea7x" }.should be_nil
-    end
-
-    it "removes the 'idea7x:clean' task" do
-      Rake::Task.tasks.detect { |task| task.to_s == "idea7x:clean" }.should be_nil
     end
 
     describe "#no_iml" do

@@ -18,11 +18,6 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', 'spec_helpers')
 
 describe "Scaladoc" do
 
-  before(:each) do
-    # Force Scala 2.8.1 for specs; don't want to rely on SCALA_HOME
-    Buildr.settings.build['scala.version'] = "2.8.1"
-  end
-
   it 'should pick -doc-title from project name by default' do
     define 'foo' do
       compile.using(:scalac)
@@ -52,19 +47,35 @@ describe "Scaladoc" do
     project('foo').doc.options[:"doc-title"].should eql('explicit')
   end
 
-  it 'should convert :windowtitle to -doc-title for Scala 2.8.1' do
+if Java.java.lang.System.getProperty("java.runtime.version") >= "1.6"
+
+  it 'should convert :windowtitle to -doc-title for Scala 2.8.1 and later' do
     write 'src/main/scala/com/example/Test.scala', 'package com.example; class Test { val i = 1 }'
     define('foo') do
       doc.using :windowtitle => "foo"
     end
-    Java.scala.tools.nsc.ScalaDoc.should_receive(:process) do |args|
+    actual = Java.scala.tools.nsc.ScalaDoc.new
+    scaladoc = Java.scala.tools.nsc.ScalaDoc.new
+    Java.scala.tools.nsc.ScalaDoc.should_receive(:new) do
+      scaladoc
+    end
+    scaladoc.should_receive(:process) do |args|
       # Convert Java Strings to Ruby Strings, if needed.
-      args.map { |a| a.is_a?(String) ? a : a.toString }.should include("-doc-title")
-      0 # normal return
+      xargs = args.map { |a| a.is_a?(String) ? a : a.toString }
+      xargs.should include("-doc-title")
+      xargs.should_not include("-windowtitle")
+      actual.process(args).should eql(true)
     end
     project('foo').doc.invoke
-  end
+  end unless Buildr::Scala.version?(2.7, "2.8.0")
+
+elsif Buildr::VERSION >= '1.5'
+  raise "JVM version guard in #{__FILE__} should be removed since it is assumed that Java 1.5 is no longer supported."
 end
+
+end
+
+if Java.java.lang.System.getProperty("java.runtime.version") >= "1.6"
 
 describe "package(:scaladoc)" do
   it "should generate target/project-version-scaladoc.jar" do
@@ -86,3 +97,6 @@ describe "package(:scaladoc)" do
   end
 end
 
+elsif Buildr::VERSION >= '1.5'
+  raise "JVM version guard in #{__FILE__} should be removed since it is assumed that Java 1.5 is no longer supported."
+end

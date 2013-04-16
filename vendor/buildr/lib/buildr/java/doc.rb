@@ -13,10 +13,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-require 'buildr/core/doc'
-
-module Buildr
-  module Doc
+module Buildr #:nodoc:
+  module Doc #:nodoc:
 
     module JavadocDefaults
       include Extension
@@ -78,7 +76,7 @@ module Buildr
     end
   end
 
-  class Project
+  class Project #:nodoc:
     include JavadocDefaults
   end
 end

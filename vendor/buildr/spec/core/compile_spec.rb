@@ -16,6 +16,13 @@
 
 require File.expand_path(File.join(File.dirname(__FILE__), '..', 'spec_helpers'))
 
+# Return now at the resolution that the current filesystem supports
+# Avoids scenario where Time.now and Time.now + 1 have same value on filesystem
+def now_at_fs_resolution
+  test_filename = "#{Dir.pwd}/deleteme"
+  FileUtils.touch test_filename
+  File.atime(test_filename)
+end
 
 module CompilerHelper
   def compile_task
@@ -334,7 +341,7 @@ describe Buildr::CompileTask, '#invoke' do
   end
 
   it 'should force compilation if target empty' do
-    time = Time.now
+    time = now_at_fs_resolution
     mkpath compile_task.target.to_s
     File.utime(time - 1, time - 1, compile_task.target.to_s)
     lambda { compile_task.from(sources).invoke }.should run_task('foo:compile')
@@ -342,7 +349,7 @@ describe Buildr::CompileTask, '#invoke' do
 
   it 'should force compilation if sources newer than compiled' do
     # Simulate class files that are older than source files.
-    time = Time.now
+    time = now_at_fs_resolution
     sources.each { |src| File.utime(time + 1, time + 1, src) }
     sources.map { |src| src.pathmap("#{compile_task.target}/thepackage/%n.class") }.
       each { |kls| write kls ; File.utime(time, time, kls) }
@@ -352,7 +359,7 @@ describe Buildr::CompileTask, '#invoke' do
 
   it 'should not force compilation if sources older than compiled' do
     # When everything has the same timestamp, nothing is compiled again.
-    time = Time.now
+    time = now_at_fs_resolution
     sources.map { |src| src.pathmap("#{compile_task.target}/thepackage/%n.class") }.
       each { |kls| write kls ; File.utime(time, time, kls) }
     lambda { compile_task.from(sources).invoke }.should_not run_task('foo:compile')
@@ -360,7 +367,7 @@ describe Buildr::CompileTask, '#invoke' do
 
   it 'should not force compilation if dependencies older than compiled' do
     jars; project('jars').task("package").invoke
-    time = Time.now
+    time = now_at_fs_resolution
     jars.each { |jar| File.utime(time - 1 , time - 1, jar) }
     sources.map { |src| File.utime(time, time, src); src.pathmap("#{compile_task.target}/thepackage/%n.class") }.
       each { |kls| write kls ; File.utime(time, time, kls) }
@@ -370,7 +377,7 @@ describe Buildr::CompileTask, '#invoke' do
   it 'should force compilation if dependencies newer than compiled' do
     jars; project('jars').task("package").invoke
     # On my machine the times end up the same, so need to push dependencies in the past.
-    time = Time.now
+    time = now_at_fs_resolution
     sources.map { |src| src.pathmap("#{compile_task.target}/thepackage/%n.class") }.
       each { |kls| write kls ; File.utime(time - 1, time - 1, kls) }
     File.utime(time - 1, time - 1, project('foo').compile.target.to_s)
@@ -379,7 +386,7 @@ describe Buildr::CompileTask, '#invoke' do
   end
 
   it 'should timestamp target directory if specified' do
-    time = Time.now - 10
+    time = now_at_fs_resolution - 10
     mkpath compile_task.target.to_s
     File.utime(time, time, compile_task.target.to_s)
     compile_task.timestamp.should be_close(time, 1)
@@ -387,24 +394,24 @@ describe Buildr::CompileTask, '#invoke' do
 
   it 'should touch target if anything compiled' do
     mkpath compile_task.target.to_s
-    File.utime(Time.now - 10, Time.now - 10, compile_task.target.to_s)
+    File.utime(now_at_fs_resolution - 10, now_at_fs_resolution - 10, compile_task.target.to_s)
     compile_task.from(sources).invoke
-    File.stat(compile_task.target.to_s).mtime.should be_close(Time.now, 2)
+    File.stat(compile_task.target.to_s).mtime.should be_close(now_at_fs_resolution, 2)
   end
 
   it 'should not touch target if nothing compiled' do
     mkpath compile_task.target.to_s
-    File.utime(Time.now - 10, Time.now - 10, compile_task.target.to_s)
+    File.utime(now_at_fs_resolution - 10, now_at_fs_resolution - 10, compile_task.target.to_s)
     compile_task.invoke
-    File.stat(compile_task.target.to_s).mtime.should be_close(Time.now - 10, 2)
+    File.stat(compile_task.target.to_s).mtime.should be_close(now_at_fs_resolution - 10, 2)
   end
 
   it 'should not touch target if failed to compile' do
     mkpath compile_task.target.to_s
-    File.utime(Time.now - 10, Time.now - 10, compile_task.target.to_s)
+    File.utime(now_at_fs_resolution - 10, now_at_fs_resolution - 10, compile_task.target.to_s)
     write 'failed.java', 'not a class'
     suppress_stdout { compile_task.from('failed.java').invoke rescue nil }
-    File.stat(compile_task.target.to_s).mtime.should be_close(Time.now - 10, 2)
+    File.stat(compile_task.target.to_s).mtime.should be_close(now_at_fs_resolution - 10, 2)
   end
 
   it 'should complain if source directories and no compiler selected' do
@@ -412,6 +419,17 @@ describe Buildr::CompileTask, '#invoke' do
     define 'bar' do
       lambda { compile.from('sources').invoke }.should raise_error(RuntimeError, /no compiler selected/i)
     end
+  end
+
+  it 'should not unnecessarily recompile files explicitly added to compile list (BUILDR-611)' do
+    mkpath 'src/other'
+    write 'src/other/Foo.java', 'package foo; public class Foo {}'
+    compile_task.from FileList['src/other/**.java']
+    mkpath 'target/classes/foo'
+    touch 'target/classes/foo/Foo.class'
+    File.utime(now_at_fs_resolution - 10, now_at_fs_resolution - 10, compile_task.target.to_s)
+    compile_task.invoke
+    File.stat(compile_task.target.to_s).mtime.should be_close(now_at_fs_resolution - 10, 2)
   end
 end
 
@@ -573,9 +591,9 @@ describe Project, '#resources' do
   end
 
   it 'should copy new resources to target directory' do
-    time = Time.now
+    time = now_at_fs_resolution
     mkdir_p 'target/resources'
-    File.utime(time-1, time-1, 'target/resources')
+    File.utime(time-10, time-10, 'target/resources')
 
     write 'src/main/resources/foo', 'Foo'
 
@@ -585,11 +603,11 @@ describe Project, '#resources' do
   end
 
   it 'should copy updated resources to target directory' do
-    time = Time.now
+    time = now_at_fs_resolution
     mkdir_p 'target/resources'
     write 'target/resources/foo', 'Foo'
-    File.utime(time-1, time-1, 'target/resources')
-    File.utime(time-1, time-1, 'target/resources/foo')
+    File.utime(time-10, time-10, 'target/resources')
+    File.utime(time-10, time-10, 'target/resources/foo')
 
     write 'src/main/resources/foo', 'Foo2'
     define('foo')

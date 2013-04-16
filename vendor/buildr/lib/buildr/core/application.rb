@@ -36,17 +36,9 @@
 # SOFTWARE.
 
 
-require 'rake'
-require 'highline/import'
-require 'rubygems/source_info_cache'
-require 'buildr/core/util'
-Gem.autoload :SourceInfoCache, 'rubygems/source_info_cache'
-
-
 # Gem::user_home is nice, but ENV['HOME'] lets you override from the environment.
 ENV['HOME'] ||= File.expand_path(Gem::user_home)
 ENV['BUILDR_ENV'] ||= 'development'
-
 
 module Buildr
 
@@ -99,7 +91,7 @@ module Buildr
     def load_from(name, path = nil)
       unless path
         fail "Internal error: attempting to access local setting before buildfile located" unless @application.rakefile
-        path = File.dirname(@application.rakefile)
+        path = File.expand_path(File.dirname(@application.rakefile))
       end
       file_name = ['yaml', 'yml'].map { |ext| File.join(path, "#{name}.#{ext}") }.find { |fn| File.exist?(fn) }
       return {} unless file_name
@@ -132,6 +124,7 @@ module Buildr
     end
 
     def run
+      @start = Time.now
       standard_exception_handling do
         init 'Buildr'
         load_buildfile
@@ -242,7 +235,6 @@ module Buildr
         elsif options.execute
           eval options.execute
         else
-          @start = Time.now
           top_level_tasks.each { |task_name| invoke_task(task_name) }
           if verbose
             elapsed = Time.now - @start
@@ -395,23 +387,31 @@ module Buildr
     end
 
     def ask_generate_buildfile
-      source = choose do |menu|
+      source, fromEclipse = choose do |menu|
         menu.header = "To use Buildr you need a buildfile. Do you want me to create one?"
-        menu.choice("From Maven2 POM file") { 'pom.xml' } if File.exist?('pom.xml')
-        menu.choice("From directory structure") { Dir.pwd }
-        menu.choice("Cancel") { }
+        menu.choice("From eclipse .project files") { [Dir.pwd, true] } if Generate.has_eclipse_project?
+        menu.choice("From Maven2 POM file") { ['pom.xml', false] } if File.exist?('pom.xml')
+        menu.choice("From directory structure") { [Dir.pwd, false] }
+        menu.choice("Cancel") {}
       end
       if source
-        buildfile = raw_generate_buildfile(source)
+        buildfile = raw_generate_buildfile(source, fromEclipse)
         [buildfile, File.dirname(buildfile)]
       end
     end
 
-    def raw_generate_buildfile(source)
+    def raw_generate_buildfile(source, fromEclipse=Generate.has_eclipse_project?)
       # We need rakefile to be known, for settings.build to be accessible.
       @rakefile = File.expand_path(DEFAULT_BUILDFILES.first)
       fail "Buildfile already exists" if File.exist?(@rakefile) && !(tty_output? && agree('Buildfile exists, overwrite?'))
-      script = File.directory?(source) ? Generate.from_directory(source) : Generate.from_maven2_pom(source)
+      script = nil
+      if fromEclipse
+        script = Generate.from_eclipse(source)
+      elsif File.directory?(source)
+        script = Generate.from_directory(source)
+      else
+        script = Generate.from_maven2_pom(source)
+      end
       File.open @rakefile, 'w' do |file|
         file.puts script
       end
@@ -428,36 +428,35 @@ module Buildr
 
     # Load/install all Gems specified in build.yaml file.
     def load_gems #:nodoc:
-      missing_deps, installed = listed_gems.partition { |gem| gem.is_a?(Gem::Dependency) }
+      installed, missing_deps = listed_gems
       unless missing_deps.empty?
-        newly_installed = Util::Gems.install(*missing_deps)
-        installed += newly_installed
+        fail Gem::LoadError, "Build requires the gems #{missing_deps.join(', ')}, which cannot be found in the local repository. Please install the gems before attempting to build project."
       end
-      installed.each do |spec|
-        if gem(spec.name, spec.version.to_s)
-          # TODO: is this intended to load rake tasks from the installed gems?
-          # We should use a convention like .. if the gem has a _buildr.rb file, load it.
-
-          #FileList[spec.require_paths.map { |path| File.expand_path("#{path}/*.rb", spec.full_gem_path) }].
-          #  map { |path| File.basename(path) }.each { |file| require file }
-          #FileList[File.expand_path('tasks/*.rake', spec.full_gem_path)].each do |file|
-          #  Buildr.application.add_import file
-          #end
-        end
-      end
+      installed.each { |spec| spec.activate }
       @gems = installed
     end
 
-    # Returns Gem::Specification for every listed and installed Gem, Gem::Dependency
-    # for listed and uninstalled Gem, which is the installed before loading the buildfile.
+    # Returns two lists. The first contains a Gem::Specification for every listed and installed
+    # Gem, the second contains a Gem::Dependency for every listed and uninstalled Gem.
     def listed_gems #:nodoc:
-      Array(settings.build['gems']).map do |dep|
-        name, trail = dep.scan(/^\s*(\S*)\s*(.*)\s*$/).first
-        versions = trail.scan(/[=><~!]{0,2}\s*[\d\.]+/)
-        versions = ['>= 0'] if versions.empty?
-        dep = Gem::Dependency.new(name, versions)
-        Gem::SourceIndex.from_installed_gems.search(dep).last || dep
+      found = []
+      missing = []
+      Array(settings.build['gems']).each do |dep|
+        name, versions = parse_gem_dependency(dep)
+        begin
+          found << Gem::Specification.find_by_name(name, versions)
+        rescue Exception
+          missing << Gem::Dependency.new(name, versions)
+        end
       end
+      return [found, missing]
+    end
+
+    def parse_gem_dependency(dep) #:nodoc:
+      name, trail = dep.scan(/^\s*(\S*)\s*(.*)\s*$/).first
+      versions = trail.scan(/[=><~!]{0,2}\s*[\d\.]+/)
+      versions = ['>= 0'] if versions.empty?
+      return name, versions
     end
 
     # Load artifact specs from the build.yaml file, making them available
@@ -484,7 +483,7 @@ module Buildr
       files = [ File.exist?(new) ? new : old, 'buildr.rb' ].select { |file| File.exist?(file) }
       files += [ File.expand_path('buildr.rake', ENV['HOME']), File.expand_path('buildr.rake') ].
         select { |file| File.exist?(file) }.each { |file| warn "Please use '#{file.ext('rb')}' instead of '#{file}'" }
-      files += (options.rakelib || []).collect { |rlib| Dir["#{rlib}/*.rake"] }.flatten
+      files += (options.rakelib || []).collect { |rlib| Dir["#{File.expand_path(rlib)}/*.rake"] }.flatten
 
       # Load .buildr/_buildr.rb same directory as buildfile
       %w{.buildr.rb _buildr.rb}.each do |f|
@@ -493,6 +492,7 @@ module Buildr
       end
 
       files.each do |file|
+        file = File.expand_path(file)
         unless $LOADED_FEATURES.include?(file)
           load file
           $LOADED_FEATURES << file
@@ -602,7 +602,7 @@ end
 HighLine.use_color = false
 if $stdout.isatty
   begin
-    require 'Win32/Console/ANSI' if Config::CONFIG['host_os'] =~ /mswin|win32|dos|cygwin|mingw/i
+    require 'Win32/Console/ANSI' if RbConfig::CONFIG['host_os'] =~ /mswin|win32|dos|cygwin|mingw/i
     HighLine.use_color = true
   rescue LoadError
   end
@@ -637,7 +637,7 @@ def trace?(*category)
   options = Buildr.application.options
   return options.trace if category.empty?
   return true if options.trace_all
-  return false unless Buildr.application.options.trace_categories
+  return false unless options.trace_categories
   options.trace_categories.include?(category.first)
 end
 
@@ -680,21 +680,16 @@ module Rake #:nodoc
   end
 end
 
-
-module RakeFileUtils #:nodoc:
-  FileUtils::OPT_TABLE.each do |name, opts|
-    default_options = []
-    if opts.include?(:verbose) || opts.include?("verbose")
-      default_options << ':verbose => RakeFileUtils.verbose_flag == true'
+module FileUtils
+  def fu_output_message(msg)   #:nodoc:
+    if Rake::FileUtilsExt::DEFAULT == RakeFileUtils.verbose_flag
+      # Swallow the default output
+    elsif RakeFileUtils.verbose_flag
+      @fileutils_output ||= $stderr
+      @fileutils_label ||= ''
+      @fileutils_output.puts @fileutils_label + msg
     end
-    next if default_options.empty?
-    module_eval(<<-EOS, __FILE__, __LINE__ + 1)
-    def #{name}( *args, &block )
-      super(
-        *rake_merge_option(args,
-          #{default_options.join(', ')}
-          ), &block)
-    end
-    EOS
   end
+  module_function :fu_output_message
+  private_class_method :fu_output_message
 end

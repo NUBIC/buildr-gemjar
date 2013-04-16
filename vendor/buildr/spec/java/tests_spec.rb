@@ -368,13 +368,26 @@ describe Buildr::TestNG do
     project('foo:bar').test.framework.should eql(:testng)
   end
 
-  it 'should include TestNG dependencies' do
-    define('foo') { test.using :testng }
-    project('foo').test.compile.dependencies.should include(artifact("org.testng:testng:jar:jdk15:#{TestNG.version}"))
-    project('foo').test.dependencies.should include(artifact("org.testng:testng:jar:jdk15:#{TestNG.version}"))
+  it 'should include TestNG dependencies for old version' do
+    begin
+      Buildr.settings.build['testng'] = '5.10'
+      define('foo') { test.using :testng }
+      project('foo').test.compile.dependencies.should include(artifact("org.testng:testng:jar:jdk15:#{TestNG.version}"))
+      project('foo').test.dependencies.should include(artifact("org.testng:testng:jar:jdk15:#{TestNG.version}"))
+    ensure
+      Buildr.settings.build['testng'] = nil
+    end
   end
 
-  it 'should include TestNG dependencies' do
+  it 'should include TestNG dependencies for old version' do
+    define('foo') { test.using :testng }
+    project('foo').test.compile.dependencies.should include(artifact("org.testng:testng:jar:#{TestNG.version}"))
+    project('foo').test.compile.dependencies.should include(artifact("com.beust:jcommander:jar:1.27"))
+    project('foo').test.dependencies.should include(artifact("org.testng:testng:jar:#{TestNG.version}"))
+    project('foo').test.dependencies.should include(artifact("com.beust:jcommander:jar:1.27"))
+  end
+
+  it 'should include jmock dependencies' do
     define('foo') { test.using :testng }
     two_or_later = JMock.version[0,1].to_i >= 2
     group = two_or_later ? "org.jmock" : "jmock"
@@ -492,6 +505,190 @@ describe Buildr::TestNG do
       }
     JAVA
     define('foo') { test.using(:testng) }
-    lambda { project('foo').test.invoke }.should change { File.exist?('reports/testng/foo/index.html') }.to(true)
+    lambda { project('foo').test.invoke }.should change { File.exist?('reports/testng/index.html') }.to(true)
+  end
+
+  it 'should include classes using TestNG annotations marked with a specific group' do
+    write 'src/test/java/com/example/AnnotatedClass.java', <<-JAVA
+      package com.example;
+      @org.testng.annotations.Test(groups={"included"})
+      public class AnnotatedClass { }
+    JAVA
+    write 'src/test/java/com/example/AnnotatedMethod.java', <<-JAVA
+      package com.example;
+      public class AnnotatedMethod {
+        @org.testng.annotations.Test
+        public void annotated() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    define('foo').test.using :testng, :groups=>['included']
+    lambda { project('foo').test.invoke }.should_not raise_error
+  end
+
+  it 'should exclude classes using TestNG annotations marked with a specific group' do
+    write 'src/test/java/com/example/AnnotatedClass.java', <<-JAVA
+      package com.example;
+      @org.testng.annotations.Test(groups={"excluded"})
+      public class AnnotatedClass {
+        public void annotated() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    write 'src/test/java/com/example/AnnotatedMethod.java', <<-JAVA
+      package com.example;
+      public class AnnotatedMethod {
+        @org.testng.annotations.Test(groups={"included"})
+        public void annotated() {}
+      }
+    JAVA
+    define('foo').test.using :testng, :excludegroups=>['excluded']
+    lambda { project('foo').test.invoke }.should_not raise_error
+  end
+end
+
+describe Buildr::MultiTest do
+  it 'should be selectable in project' do
+    define 'foo' do
+      test.using(:multitest, :frameworks => [])
+      test.framework.should eql(:multitest)
+    end
+  end
+
+  it 'should include dependencies of whichever test framework(s) are selected' do
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    project('foo').test.compile.dependencies.should include(artifact("junit:junit:jar:#{JUnit.version}"))
+    project('foo').test.compile.dependencies.should include(artifact("org.testng:testng:jar:#{TestNG.version}"))
+    project('foo').test.dependencies.should include(artifact("junit:junit:jar:#{JUnit.version}"))
+    project('foo').test.dependencies.should include(artifact("org.testng:testng:jar:#{TestNG.version}"))
+  end
+
+  it 'should include classes of given test framework(s)' do
+    write 'src/test/java/com/example/JUnitTest.java', <<-JAVA
+      package com.example;
+      public class JUnitTest extends junit.framework.TestCase {
+        public void testNothing() { }
+      }
+    JAVA
+    write 'src/test/java/com/example/TestNGTest.java', <<-JAVA
+      package com.example;
+      @org.testng.annotations.Test
+      public class TestNGTest { }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    project('foo').test.invoke
+    project('foo').test.tests.should include('com.example.JUnitTest', 'com.example.TestNGTest')
+  end
+
+  it 'should pass when test case passes' do
+    write 'src/test/java/PassingTest.java', <<-JAVA
+      public class PassingTest extends junit.framework.TestCase {
+        public void testNothing() {}
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    lambda { project('foo').test.invoke }.should_not raise_error
+  end
+
+  it 'should fail when test case fails' do
+    write 'src/test/java/FailingTest.java', <<-JAVA
+      public class FailingTest {
+        @org.testng.annotations.Test
+        public void testNothing() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    lambda { project('foo').test.invoke }.should raise_error(RuntimeError, /Tests failed/)
+  end
+
+  it 'should fail when multiple test case fail' do
+    write 'src/test/java/FailingTest1.java', <<-JAVA
+      public class FailingTest1 {
+        @org.testng.annotations.Test
+        public void testNothing() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    write 'src/test/java/FailingTest2.java', <<-JAVA
+      public class FailingTest2 {
+        @org.testng.annotations.Test
+        public void testNothing() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    lambda { project('foo').test.invoke }.should raise_error(RuntimeError, /Tests failed/)
+  end
+
+  it 'should report failed test names' do
+    write 'src/test/java/FailingTest.java', <<-JAVA
+      public class FailingTest {
+        @org.testng.annotations.Test
+        public void testNothing() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    project('foo').test.invoke rescue nil
+    project('foo').test.failed_tests.should include('FailingTest')
+  end
+
+  it 'should generate reports' do
+    write 'src/test/java/PassingTest.java', <<-JAVA
+      public class PassingTest {
+        @org.testng.annotations.Test
+        public void testNothing() {}
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ] }
+    lambda { project('foo').test.invoke }.should change {
+    File.exist?('reports/multitest/index.html') }.to(true)
+  end
+
+  it 'should include classes using TestNG annotations marked with a specific group' do
+    write 'src/test/java/com/example/AnnotatedClass.java', <<-JAVA
+      package com.example;
+      @org.testng.annotations.Test(groups={"included"})
+      public class AnnotatedClass { }
+    JAVA
+    write 'src/test/java/com/example/AnnotatedMethod.java', <<-JAVA
+      package com.example;
+      public class AnnotatedMethod {
+        @org.testng.annotations.Test
+        public void annotated() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ], :groups=>['included'] }
+    lambda { project('foo').test.invoke }.should_not raise_error
+  end
+
+  it 'should exclude classes using TestNG annotations marked with a specific group' do
+    write 'src/test/java/com/example/AnnotatedClass.java', <<-JAVA
+      package com.example;
+      @org.testng.annotations.Test(groups={"excluded"})
+      public class AnnotatedClass {
+        public void annotated() {
+          org.testng.AssertJUnit.assertTrue(false);
+        }
+      }
+    JAVA
+    write 'src/test/java/com/example/AnnotatedMethod.java', <<-JAVA
+      package com.example;
+      public class AnnotatedMethod {
+        @org.testng.annotations.Test(groups={"included"})
+        public void annotated() {}
+      }
+    JAVA
+    define('foo') { test.using :multitest, :frameworks => [ Buildr::JUnit, Buildr::TestNG ], :excludegroups=>['excluded'] }
+    lambda { project('foo').test.invoke }.should_not raise_error
   end
 end

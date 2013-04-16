@@ -13,12 +13,8 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/shell'
-require 'buildr/java/commands'
-
-module Buildr
-  module Scala
+module Buildr #:nodoc:
+  module Scala #:nodoc:
     class ScalaShell < Buildr::Shell::Base
       include Buildr::JRebel
 
@@ -30,7 +26,7 @@ module Buildr
 
         cp = project.compile.dependencies +
              Scalac.dependencies +
-             [ project.path_to(:target, :classes) ] +
+             project.test.dependencies +
              task.classpath
 
         java_args = jrebel_args + task.java_args

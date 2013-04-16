@@ -1,0 +1,140 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl"?>
+<rdf:RDF xml:lang="en"
+         xmlns="http://usefulinc.com/ns/doap#" 
+         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:asfext="http://projects.apache.org/ns/asfext#"
+         xmlns:foaf="http://xmlns.com/foaf/0.1/">
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+   
+         http://www.apache.org/licenses/LICENSE-2.0
+   
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+  <Project rdf:about="http://buildr.apache.org">
+    <created>2012-10-07</created>
+    <license rdf:resource="http://usefulinc.com/doap/licenses/asl20" />
+    <name>Apache Buildr</name>
+    <homepage rdf:resource="http://buildr.apache.org" />
+    <asfext:pmc rdf:resource="http://buildr.apache.org" />
+    <shortdesc>Apache Buildr is a build system for Java-based applications, including support for Scala, Groovy and a growing number of JVM languages and tools.</shortdesc>
+    <description>We wanted something that's simple and intuitive to use, so we only need to tell it what to do, and it takes care of the rest.  But also something we can easily extend for those one-off tasks, with a language that's a joy to use.</description>
+    <bug-database rdf:resource="http://issues.apache.org/jira/browse/Buildr" />
+    <mailing-list rdf:resource="http://buildr.apache.org/mailing_lists.html" />
+    <download-page rdf:resource="http://buildr.apache.org/download.html" />
+    <programming-language>Ruby</programming-language>
+    <category rdf:resource="http://projects.apache.org/category/build-management" />
+    <release>
+      <Version>
+        <name>1.4.11</name>
+        <created>2013-03-14</created>
+        <revision>1.4.11</revision>
+        <dc:description>
+* Fixed:  Multiple tests in TestNG 6.x versions were being incorrectly passed to
+          the command line application.
+
+        </dc:description>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>1.4.10</name>
+        <created>2013-02-17</created>
+        <revision>1.4.10</revision>
+        <dc:description>
+* Added:  Support a single intermediate directory for each project hierarchy
+          through an addon 'buildr/single_intermediate_layout'.
+* Fixed:  BUILDR-660 possible build issue when using build.yaml and tasks/*.rake
+          (Félix Enrique Llorente Pastora)
+* Added:  Support the :dir option in the Java::Commands.java method.
+* Fixed:  Scala 2.10 support - compiler now uses additional/separate jars
+          introduced in 2.10 such as scala-reflect.jar and scala-actor.jar
+* Added:  Add an addon for NSIS.
+* Change: BUILDR-612 - Support the TestNG 6.x versions and default
+          to 6.8.
+* Added:  BUILDR-599 - Support the passing of arguments to testng
+          test runner.
+* Fixed:  Observer the per-project source version when generating
+          IDEA module files.
+* Change: Sort the components in IDEA project files in the same
+          order the idea sorts them.
+* Fixed:  Findbugs addon correctly handles String dependencies
+          (vs task dependencies)
+* Fixed:  Checkstyle addon correctly handles String dependencies
+          (vs task dependencies)
+* Added:  Created an addon 'buildr/wsgen' for generating wsdls from java
+          and java from wsdls using the underlying wsgen tool.
+* Change: Defer the expansion of generated poms by wrapping the generation
+          in a Proc.
+* Change: Rework Artifact.content(value) method to accept a Proc that
+          will be called before the artifact is written rather than
+          requiring a string.
+* Added:  Create a 'buildr/gpg' addon that signs and uploads signatures
+          when uploading artifacts. Inspired by a similar extension in
+          the Apache ODE project by Tammo van Lessen.
+* Change: Updated dependency versions;
+          - jruby-openssl (0.8.2)
+          - atoulme-Antwrap (0.7.4)
+* Change: Require 'bundler/setup' as part of buildr startup to ensure that
+          buildr always runs with up to date dependencies if a Gemfile is
+          present.
+* Added:  Add FrameworkDetectionExcludesConfiguration facet to Idea project
+          file creation by default.
+* Fixed:  In the IntelliJ extension, defer the materialization of the
+          default_components until expansion time to avoid loss of sub-
+          components added after an add_component call.
+* Fixed:  BUILDR-633 - Remove hardcoded shebang lines in all-in-one release.
+* Added:  Create a simple extension that modifies the project layout to place
+          generated files at the top level.
+
+        </dc:description>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>1.4.9</name>
+        <created>2012-11-08</created>
+        <revision>1.4.9</revision>
+        <dc:description>
+* Fixed:  Fixed the interaction with the FileUtils classes. The last release
+          introduced a non-deterministic bug that sometimes caused logging
+          preferences to be ignored and the install method to be
+          inadvertently overwritten.
+
+        </dc:description>
+      </Version>
+    </release>
+    <release>
+      <Version>
+        <name>1.4.8</name>
+        <created>2012-11-01</created>
+        <revision>1.4.8</revision>
+      </Version>
+    </release>
+    <repository>
+      <SVNRepository>
+        <location rdf:resource="http://svn.apache.org/repos/asf/buildr"/>
+        <browse rdf:resource="http://svn.apache.org/viewvc/buildr"/>
+      </SVNRepository>
+    </repository>
+    <maintainer>
+      <foaf:Person>
+        <foaf:name>Apache Buildr PMC</foaf:name>
+          <foaf:mbox rdf:resource="mailto:dev@buildr.apache.org"/>
+      </foaf:Person>
+    </maintainer>
+  </Project>
+</rdf:RDF>

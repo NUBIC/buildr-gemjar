@@ -13,11 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-
-require 'buildr/packaging/archive'
-
-
-module Buildr
+module Buildr #:nodoc:
 
   # The ZipTask creates a new Zip file. You can include any number of files and and directories,
   # use exclusion patterns, and include files into specific directories.
@@ -161,8 +157,8 @@ module Buildr
                   dest = File.expand_path(dest, target.to_s)
                   trace "Extracting #{dest}"
                   mkpath File.dirname(dest) rescue nil
-                  #entry.restore_permissions = true
-                  File.open(dest, 'wb') {|f| f.write entry.read}
+                  File.open(dest, 'wb', entry.mode) {|f| f.write entry.read}
+                  File.chmod(entry.mode, dest)
                 end
               end
             end
