@@ -8,7 +8,7 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 require 'buildr-gemjar'
 
 # preload JRuby so it isn't D/Led with each spec
-artifacts(BuildrGemjar.jruby_artifact)
+artifact(BuildrGemjar.jruby_artifact).invoke
 
 require File.expand_path("../repo_builder.rb", __FILE__)
 
